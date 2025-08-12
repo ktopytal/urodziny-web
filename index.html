@@ -1,0 +1,665 @@
+<!DOCTYPE html>
+<html lang="pl">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#ff4d6d" />
+    <meta name="description" content="Animowane życzenia urodzinowe dla Ciebie!" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Urodziny 💕" />
+    <meta name="msapplication-TileColor" content="#ff4d6d" />
+    <meta name="msapplication-config" content="/browserconfig.xml" />
+    <meta name="format-detection" content="telephone=no" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="/manifest.json" />
+    
+    <!-- Apple Touch Icons -->
+    <link rel="apple-touch-icon" href="/icon-152x152.png" />
+    <link rel="apple-touch-icon" sizes="152x152" href="/icon-152x152.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/icon-180x180.png" />
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
+    <link rel="shortcut icon" href="/favicon.ico" />
+    
+    <!-- Preload critical resources -->
+    <link rel="preload" href="style.css" as="style" />
+    <link rel="preload" href="script.js" as="script" />
+    <link rel="preload" href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;800&family=Great+Vibes&display=swap" as="style" />
+    
+    <!-- DNS prefetch for external resources -->
+    <link rel="dns-prefetch" href="//cdn.jsdelivr.net" />
+    <link rel="dns-prefetch" href="//fonts.googleapis.com" />
+    
+    <!-- Security headers -->
+    <meta http-equiv="X-Content-Type-Options" content="nosniff" />
+    <meta http-equiv="X-Frame-Options" content="DENY" />
+    <meta http-equiv="X-XSS-Protection" content="1; mode=block" />
+    <meta http-equiv="Referrer-Policy" content="strict-origin-when-cross-origin" />
+    
+    <!-- Performance optimizations -->
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="color-scheme" content="dark" />
+    
+    <title>Wszystkiego najlepszego, Kochanie! 🎂💖</title>
+
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;800&family=Great+Vibes&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="style.css" />
+    
+    <!-- Structured Data for SEO -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebPage",
+      "name": "Strona Urodzinowa",
+      "description": "Animowana strona urodzinowa z życzeniami miłości",
+      "url": "https://example.com",
+      "mainEntity": {
+        "@type": "CreativeWork",
+        "name": "Życzenia Urodzinowe",
+        "description": "Specjalne życzenia urodzinowe z miłością"
+      }
+    }
+    </script>
+  </head>
+  <body>
+    <canvas id="heartsCanvas" aria-hidden="true"></canvas>
+
+    <main>
+      <section id="hero" class="section hero">
+        <div class="hero-inner">
+          <h1 class="title" data-depth="6">Wszystkiego najlepszego!</h1>
+          <h2 class="subtitle" data-depth="4">Dla Ciebie, <span id="nameSpan">Kochanie</span> ✨</h2>
+          <p class="lead" data-depth="2">Niech każdy dzień przynosi Ci uśmiech, ciepło i spełnione marzenia.</p>
+          <div class="hero-actions">
+            <button id="startButton" class="btn primary">Zacznij magiczny pokaz</button>
+            <button id="confettiButton" class="btn ghost">Odpal konfetti 🎉</button>
+          </div>
+        </div>
+      </section>
+
+      <section id="music" class="section music-section">
+        <div class="glass-card reveal">
+          <h3 class="script">🎵 Nasza muzyka 💕</h3>
+          <div class="music-player">
+            <div class="music-info">
+              <div class="album-art">
+                <div class="vinyl-disc">
+                  <div class="vinyl-center"></div>
+                </div>
+              </div>
+              <div class="track-details">
+                <h4 class="track-title">Chłopaki nie płaczą</h4>
+                <p class="track-artist">Nasza piosenka</p>
+              </div>
+            </div>
+            
+            <div class="music-controls">
+              <audio id="audioPlayer" preload="metadata">
+                <source src="Chłopaki nie płaczą_audio only.webm" type="audio/webm">
+                Twoja przeglądarka nie wspiera odtwarzania audio.
+              </audio>
+              
+              <div class="control-buttons">
+                <button id="playPauseBtn" class="control-btn play-btn">
+                  <span class="play-icon">▶️</span>
+                  <span class="pause-icon">⏸️</span>
+                </button>
+                <button id="stopBtn" class="control-btn stop-btn">⏹️</button>
+                <button id="volumeBtn" class="control-btn volume-btn">🔊</button>
+              </div>
+              
+              <div class="progress-container">
+                <div class="time-display">
+                  <span id="currentTime">0:00</span>
+                  <span id="totalTime">0:00</span>
+                </div>
+                <div class="progress-bar">
+                  <div class="progress-fill"></div>
+                  <div class="progress-handle"></div>
+                </div>
+              </div>
+              
+              <div class="volume-container">
+                <input type="range" id="volumeSlider" min="0" max="100" value="80" class="volume-slider">
+              </div>
+              
+              <div class="audio-visualizer">
+                <canvas id="visualizerCanvas" width="400" height="80"></canvas>
+              </div>
+              
+              <div class="equalizer-controls">
+                <div class="eq-slider">
+                  <label>Bass</label>
+                  <input type="range" id="bassSlider" min="-20" max="20" value="0" class="eq-range">
+                </div>
+                <div class="eq-slider">
+                  <label>Treble</label>
+                  <input type="range" id="trebleSlider" min="-20" max="20" value="0" class="eq-range">
+                </div>
+              </div>
+              
+              <div class="playback-controls">
+                <button id="loopBtn" class="control-btn loop-btn" title="Loop">🔁</button>
+                <button id="shuffleBtn" class="control-btn shuffle-btn" title="Shuffle">🔀</button>
+                <button id="backwardBtn" class="control-btn" title="Backward 10s">⏪</button>
+                <button id="forwardBtn" class="control-btn" title="Forward 10s">⏩</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="wishes" class="section">
+        <div class="glass-card reveal">
+          <h3 class="script">Moje życzenia dla Ciebie</h3>
+          <p>
+            W dniu Twoich urodzin życzę Ci niekończącej się radości, odwagi do spełniania marzeń,
+            oceanów miłości i chwil tak pięknych, że aż trudno w nie uwierzyć. Niech każdy krok
+            prowadzi Cię do szczęścia, a każdy poranek budzi nadzieję.
+          </p>
+          <p>
+            Dziękuję, że jesteś. Twoje serce rozświetla mój świat, a Twój uśmiech jest moją ulubioną
+            melodią. Niech los zawsze Ci sprzyja, a ja będę obok – dziś, jutro i zawsze.
+          </p>
+        </div>
+      </section>
+
+      <section id="reasons" class="section">
+        <h3 class="section-title reveal">Dlaczego jesteś wyjątkowa</h3>
+        <div class="grid">
+          <div class="card reason reveal">
+            <div class="icon">💖</div>
+            <h4>Twoje serce</h4>
+            <p>Masz najpiękniejsze serce – czułe, dobre i silne.</p>
+          </div>
+          <div class="card reason reveal">
+            <div class="icon">🌙</div>
+            <h4>Twój spokój</h4>
+            <p>Wnosisz ukojenie w każdy, nawet najtrudniejszy dzień.</p>
+          </div>
+          <div class="card reason reveal">
+            <div class="icon">🌈</div>
+            <h4>Twoja radość</h4>
+            <p>Twoje spojrzenie i śmiech rozpraszają wszystkie chmury.</p>
+          </div>
+          <div class="card reason reveal">
+            <div class="icon">✨</div>
+            <h4>Twoje marzenia</h4>
+            <p>Inspirujesz mnie, by sięgać wyżej i odważniej żyć.</p>
+          </div>
+          <div class="card reason reveal">
+            <div class="icon">☀️</div>
+            <h4>Twoje światło</h4>
+            <p>Rozjaśniasz każdy kąt – także mój świat i serce.</p>
+          </div>
+          <div class="card reason reveal">
+            <div class="icon">🌸</div>
+            <h4>Twoja delikatność</h4>
+            <p>Jesteś subtelna, a jednocześnie niesamowicie silna.</p>
+          </div>
+        </div>
+      </section>
+
+      <section id="moments" class="section">
+        <div class="carousel reveal">
+          <div class="slide">
+            <h4>Każdy dzień z Tobą</h4>
+            <p>jest piękniejszy niż poprzedni.</p>
+          </div>
+          <div class="slide">
+            <h4>Każdy Twój uśmiech</h4>
+            <p>to iskra, która rozświetla moje myśli.</p>
+          </div>
+          <div class="slide">
+            <h4>Każde spojrzenie</h4>
+            <p>przypomina mi, że miłość jest najważniejsza.</p>
+          </div>
+        </div>
+      </section>
+
+      <section id="finale" class="section finale">
+        <div class="glass-card reveal">
+          <h3 class="script">Sto lat, Kochanie!</h3>
+          <p>
+            Niech dzisiejszy dzień będzie początkiem najpiękniejszego rozdziału. Kocham Cię ponad słowa.
+          </p>
+          <div class="hero-actions">
+            <button id="finaleButton" class="btn primary">Jeszcze więcej magii ✨</button>
+          </div>
+        </div>
+      </section>
+
+      <section id="countdown" class="section">
+        <div class="glass-card reveal">
+          <h3 class="script">🎉 Twoje urodziny już dziś! 🎉</h3>
+          <div class="countdown-timer">
+            <div class="time-unit">
+              <span class="number" id="hours">00</span>
+              <span class="label">Godzin</span>
+            </div>
+            <div class="time-unit">
+              <span class="number" id="minutes">00</span>
+              <span class="label">Minut</span>
+            </div>
+            <div class="time-unit">
+              <span class="number" id="seconds">00</span>
+              <span class="label">Sekund</span>
+            </div>
+          </div>
+          <p class="countdown-text">do końca tego wspaniałego dnia!</p>
+        </div>
+      </section>
+
+      <section id="gallery" class="section">
+        <h3 class="section-title reveal">Nasze wspomnienia 💕</h3>
+        <div class="memory-grid reveal">
+          <div class="memory-card">
+            <div class="memory-icon">💑</div>
+            <h4>Pierwszy raz</h4>
+            <p>Gdy nasze oczy się spotkały...</p>
+          </div>
+          <div class="memory-card">
+            <div class="memory-icon">🌅</div>
+            <h4>Wspólne poranki</h4>
+            <p>Budzę się z myślą o Tobie</p>
+          </div>
+          <div class="memory-card">
+            <div class="memory-icon">🎭</div>
+            <h4>Nasze przygody</h4>
+            <p>Każdy dzień to nowa historia</p>
+          </div>
+        </div>
+      </section>
+
+      <section id="interactive" class="section interactive-section">
+        <h3 class="section-title reveal">🎮 Interaktywna strefa miłości 🎮</h3>
+        <div class="interactive-grid reveal">
+          <div class="game-card" id="loveGame">
+            <h4>💖 Gra w miłość</h4>
+            <p>Kliknij serduszka i zbierz punkty!</p>
+            <div class="game-area">
+              <div class="score">Punkty: <span id="gameScore">0</span></div>
+              <div class="game-hearts"></div>
+            </div>
+          </div>
+          
+          <div class="mood-card" id="moodTracker">
+            <h4>😊 Twój nastrój</h4>
+            <p>Jak się czujesz dzisiaj?</p>
+            <div class="mood-selector">
+              <button class="mood-btn" data-mood="happy">😊</button>
+              <button class="mood-btn" data-mood="love">🥰</button>
+              <button class="mood-btn" data-mood="excited">🤩</button>
+              <button class="mood-btn" data-mood="peaceful">😌</button>
+            </div>
+          </div>
+          
+          <div class="message-card" id="messageBox">
+            <h4>💌 Wiadomość dla Ciebie</h4>
+            <textarea id="loveMessage" placeholder="Napisz coś miłego..."></textarea>
+            <button id="sendMessage" class="btn primary">Wyślij miłość 💕</button>
+          </div>
+        </div>
+      </section>
+
+      <section id="wish-garden" class="section">
+        <h3 class="section-title reveal">🌸 Ogród życzeń 🌸</h3>
+        <div class="wish-garden reveal">
+          <div class="garden-controls">
+            <button id="plantWish" class="btn primary">🌱 Zasadź życzenie</button>
+            <button id="waterGarden" class="btn ghost">💧 Podlej ogród</button>
+            <button id="harvestWishes" class="btn primary">🌻 Zbierz życzenia</button>
+          </div>
+          <div class="garden-area">
+            <canvas id="gardenCanvas" width="800" height="400"></canvas>
+          </div>
+          <div class="wish-stats">
+            <div class="stat">
+              <span class="stat-number" id="wishesPlanted">0</span>
+              <span class="stat-label">Zasadzone życzenia</span>
+            </div>
+            <div class="stat">
+              <span class="stat-number" id="wishesBloomed">0</span>
+              <span class="stat-label">Rozkwitłe życzenia</span>
+            </div>
+            <div class="stat">
+              <span class="stat-number" id="gardenLevel">1</span>
+              <span class="stat-label">Poziom ogrodu</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="love-weather" class="section">
+        <h3 class="section-title reveal">🌤️ Pogoda miłości 🌤️</h3>
+        <div class="weather-widget reveal">
+          <div class="weather-display">
+            <div class="weather-icon" id="weatherIcon">☀️</div>
+            <div class="weather-info">
+              <div class="temperature" id="loveTemp">25°C</div>
+              <div class="condition" id="loveCondition">Słonecznie z miłością</div>
+            </div>
+          </div>
+          <div class="weather-controls">
+            <button id="changeWeather" class="btn ghost">🌦️ Zmień pogodę</button>
+            <button id="loveStorm" class="btn primary">⛈️ Burza miłości</button>
+            <button id="rainbowMode" class="btn primary">🌈 Tryb tęczy</button>
+          </div>
+          <div class="weather-forecast">
+            <div class="forecast-item">
+              <span class="day">Dziś</span>
+              <span class="icon">💕</span>
+              <span class="temp">25°C</span>
+            </div>
+            <div class="forecast-item">
+              <span class="day">Jutro</span>
+              <span class="icon">🥰</span>
+              <span class="temp">28°C</span>
+            </div>
+            <div class="forecast-item">
+              <span class="day">Pojutrze</span>
+              <span class="icon">✨</span>
+              <span class="temp">30°C</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="3d-gallery" class="section">
+        <h3 class="section-title reveal">🌟 3D Galeria uczuć 🌟</h3>
+        <div class="cube-container reveal">
+          <div class="cube">
+            <div class="face front">💖</div>
+            <div class="face back">💕</div>
+            <div class="face right">💝</div>
+            <div class="face left">💗</div>
+            <div class="face top">💓</div>
+            <div class="face bottom">💞</div>
+          </div>
+        </div>
+        <div class="cube-controls">
+          <button id="rotateX" class="btn ghost">Obróć X</button>
+          <button id="rotateY" class="btn ghost">Obróć Y</button>
+          <button id="rotateZ" class="btn ghost">Obróć Z</button>
+          <button id="autoRotate" class="btn primary">Auto-rotacja</button>
+        </div>
+      </section>
+
+      <section id="particle-world" class="section">
+        <h3 class="section-title reveal">✨ Świat cząsteczek miłości ✨</h3>
+        <canvas id="particleCanvas" width="800" height="400"></canvas>
+        <div class="particle-controls">
+          <button id="addParticles" class="btn primary">Dodaj cząsteczki</button>
+          <button id="clearParticles" class="btn ghost">Wyczyść</button>
+          <button id="explosion" class="btn primary">💥 Eksplozja miłości</button>
+        </div>
+      </section>
+
+      <section id="memory-gallery" class="section">
+        <h3 class="section-title reveal">🖼️ Galeria wspomnień 3D 🖼️</h3>
+        <div class="memory-gallery reveal">
+          <div class="gallery-controls">
+            <button id="prevMemory" class="btn ghost">◀️ Poprzednie</button>
+            <button id="nextMemory" class="btn ghost">Następne ▶️</button>
+            <button id="autoPlay" class="btn primary">▶️ Auto-odtwarzanie</button>
+            <button id="fullscreen" class="btn ghost">🔍 Pełny ekran</button>
+          </div>
+          
+          <div class="gallery-viewer">
+            <div class="memory-frame" id="memoryFrame">
+              <div class="memory-content">
+                <div class="memory-image">
+                  <div class="placeholder-image">💕</div>
+                </div>
+                <div class="memory-text">
+                  <h4 class="memory-title">Nasze pierwsze spotkanie</h4>
+                  <p class="memory-description">Tego dnia wszystko się zmieniło...</p>
+                  <div class="memory-date">14 lutego 2024</div>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <div class="memory-thumbnails">
+            <div class="thumbnail active" data-index="0">
+              <div class="thumb-icon">💕</div>
+              <span class="thumb-title">Pierwsze spotkanie</span>
+            </div>
+            <div class="thumbnail" data-index="1">
+              <div class="thumb-icon">🌅</div>
+              <span class="thumb-title">Wspólny poranek</span>
+            </div>
+            <div class="thumbnail" data-index="2">
+              <div class="thumb-icon">🎭</div>
+              <span class="thumb-title">Nasze przygody</span>
+            </div>
+            <div class="thumbnail" data-index="3">
+              <div class="thumb-icon">🌸</div>
+              <span class="thumb-title">Wiosenne spacery</span>
+            </div>
+            <div class="thumbnail" data-index="4">
+              <div class="thumb-icon">🌙</div>
+              <span class="thumb-title">Wieczorne rozmowy</span>
+            </div>
+          </div>
+          
+          <div class="memory-stats">
+            <div class="stat-item">
+              <span class="stat-icon">📸</span>
+              <span class="stat-value" id="totalMemories">5</span>
+              <span class="stat-label">Wspomnień</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-icon">❤️</span>
+              <span class="stat-value" id="memoryLikes">0</span>
+              <span class="stat-label">Polubień</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-icon">⭐</span>
+              <span class="stat-value" id="memoryRating">5.0</span>
+              <span class="stat-label">Ocena</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="love-calendar" class="section">
+        <h3 class="section-title reveal">📅 Kalendarz miłości 📅</h3>
+        <div class="calendar-container reveal">
+          <div class="calendar-header">
+            <button id="prevMonth" class="btn ghost">◀️</button>
+            <h4 id="currentMonth">Luty 2024</h4>
+            <button id="nextMonth" class="btn ghost">▶️</button>
+          </div>
+          
+          <div class="calendar-grid">
+            <div class="calendar-weekdays">
+              <div class="weekday">Pon</div>
+              <div class="weekday">Wto</div>
+              <div class="weekday">Śro</div>
+              <div class="weekday">Czw</div>
+              <div class="weekday">Pią</div>
+              <div class="weekday">Sob</div>
+              <div class="weekday">Nie</div>
+            </div>
+            
+            <div class="calendar-days" id="calendarDays">
+              <!-- Days will be generated by JavaScript -->
+            </div>
+          </div>
+          
+          <div class="calendar-events">
+            <h5>Wydarzenia w tym miesiącu</h5>
+            <div class="events-list" id="eventsList">
+              <!-- Events will be generated by JavaScript -->
+            </div>
+            <button id="addEvent" class="btn primary">➕ Dodaj wydarzenie</button>
+          </div>
+          
+          <div class="calendar-stats">
+            <div class="stat-item">
+              <span class="stat-icon">💕</span>
+              <span class="stat-value" id="daysTogether">0</span>
+              <span class="stat-label">Dni razem</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-icon">🎉</span>
+              <span class="stat-value" id="specialDays">0</span>
+              <span class="stat-label">Specjalne dni</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-icon">📝</span>
+              <span class="stat-value" id="totalEvents">0</span>
+              <span class="stat-label">Wydarzenia</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="love-quiz" class="section">
+        <h3 class="section-title reveal">🧠 Quiz miłości 🧠</h3>
+        <div class="quiz-container reveal">
+          <div class="quiz-header">
+            <div class="quiz-progress">
+              <div class="progress-bar">
+                <div class="progress-fill" id="quizProgress"></div>
+              </div>
+              <span class="progress-text" id="quizProgressText">Pytanie 1 z 10</span>
+            </div>
+            <div class="quiz-score">
+              <span class="score-label">Wynik:</span>
+              <span class="score-value" id="quizScore">0</span>
+              <span class="score-max">/10</span>
+            </div>
+          </div>
+          
+          <div class="quiz-content" id="quizContent">
+            <div class="question-container">
+              <h4 class="question-text" id="questionText">Ładowanie pytania...</h4>
+              <div class="question-options" id="questionOptions">
+                <!-- Options will be generated by JavaScript -->
+              </div>
+            </div>
+          </div>
+          
+          <div class="quiz-controls">
+            <button id="startQuiz" class="btn primary">🎯 Rozpocznij quiz</button>
+            <button id="nextQuestion" class="btn primary" style="display: none;">⏭️ Następne pytanie</button>
+            <button id="restartQuiz" class="btn ghost" style="display: none;">🔄 Zacznij od nowa</button>
+          </div>
+          
+          <div class="quiz-results" id="quizResults" style="display: none;">
+            <h4 class="results-title">🎉 Twój wynik!</h4>
+            <div class="results-score">
+              <span class="final-score" id="finalScore">0</span>
+              <span class="score-out-of">/10</span>
+            </div>
+            <div class="results-message" id="resultsMessage">
+              <!-- Message will be generated by JavaScript -->
+            </div>
+            <div class="results-breakdown" id="resultsBreakdown">
+              <!-- Breakdown will be generated by JavaScript -->
+            </div>
+          </div>
+          
+          <div class="quiz-stats">
+            <div class="stat-item">
+              <span class="stat-icon">🎯</span>
+              <span class="stat-value" id="quizAttempts">0</span>
+              <span class="stat-label">Próby</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-icon">🏆</span>
+              <span class="stat-value" id="bestScore">0</span>
+              <span class="stat-label">Najlepszy wynik</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-icon">⭐</span>
+              <span class="stat-value" id="averageScore">0</span>
+              <span class="stat-label">Średni wynik</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="love-map" class="section">
+        <h3 class="section-title reveal">🗺️ Mapa miłości 🗺️</h3>
+        <div class="map-container reveal">
+          <div class="map-controls">
+            <button id="addLocation" class="btn primary">📍 Dodaj miejsce</button>
+            <button id="showAllLocations" class="btn ghost">🌍 Pokaż wszystkie</button>
+            <button id="clearMap" class="btn ghost">🗑️ Wyczyść mapę</button>
+            <button id="exportMap" class="btn primary">💾 Eksportuj</button>
+          </div>
+          
+          <div class="map-viewer">
+            <canvas id="loveMapCanvas" width="800" height="500"></canvas>
+            <div class="map-overlay">
+              <div class="map-info" id="mapInfo">
+                <h4>Kliknij na miejsce aby zobaczyć szczegóły</h4>
+                <p>Lub dodaj nowe miejsce miłości</p>
+              </div>
+            </div>
+          </div>
+          
+          <div class="map-locations">
+            <h5>📍 Nasze miejsca miłości</h5>
+            <div class="locations-list" id="locationsList">
+              <!-- Locations will be generated by JavaScript -->
+            </div>
+          </div>
+          
+          <div class="map-stats">
+            <div class="stat-item">
+              <span class="stat-icon">🗺️</span>
+              <span class="stat-value" id="totalLocations">0</span>
+              <span class="stat-label">Miejsca</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-icon">💕</span>
+              <span class="stat-value" id="favoriteLocation">-</span>
+              <span class="stat-label">Ulubione</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-icon">⭐</span>
+              <span class="stat-value" id="mapRating">5.0</span>
+              <span class="stat-label">Ocena</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="voice-message" class="section">
+        <h3 class="script reveal">🎤 Nagraj wiadomość głosową</h3>
+        <div class="voice-recorder reveal">
+          <div class="recorder-display">
+            <div class="waveform" id="waveform"></div>
+            <div class="recording-time" id="recordingTime">00:00</div>
+          </div>
+          <div class="recorder-controls">
+            <button id="startRecording" class="btn primary">🎙️ Start</button>
+            <button id="stopRecording" class="btn ghost">⏹️ Stop</button>
+            <button id="playRecording" class="btn primary">▶️ Odtwórz</button>
+          </div>
+        </div>
+      </section>
+
+    </main>
+
+    <footer class="footer">
+      <p>Stworzone z miłością 💌</p>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/ScrollTrigger.min.js" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/ScrollToPlugin.min.js" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js" defer></script>
+    <script src="script.js" defer></script>
+  </body>
+</html> 
