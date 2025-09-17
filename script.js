@@ -1628,35 +1628,75 @@ document.addEventListener('DOMContentLoaded', () => {
 
 /* ===== Interactive Love Game ===== */
 (function loveGame() {
-  const gameHearts = document.querySelector('.game-hearts');
-  const gameScore = document.getElementById('gameScore');
-  let score = 0;
+  const gameContainer = document.getElementById('loveGame');
+  if (!gameContainer) return;
+
+  const gameHearts = gameContainer.querySelector('.game-hearts');
+  const gameScore = gameContainer.querySelector('#gameScore');
+  const gameArea = gameContainer.querySelector('.game-area');
   
+  let score = 0;
+  let timer;
+  let gameStarted = false;
+
+  function createStartButton() {
+    const startButton = document.createElement('button');
+    startButton.textContent = 'Zacznij grę';
+    startButton.className = 'btn primary';
+    startButton.style.marginTop = '20px';
+    gameArea.appendChild(startButton);
+
+    startButton.addEventListener('click', startGame);
+  }
+
+  function startGame() {
+    if (gameStarted) return;
+    gameStarted = true;
+    score = 0;
+    gameScore.textContent = score;
+    gameArea.querySelector('button').remove();
+    
+    createGameHearts();
+
+    timer = setTimeout(() => {
+      endGame();
+    }, 30000);
+  }
+
+  function endGame() {
+    gameStarted = false;
+    clearTimeout(timer);
+    gameHearts.innerHTML = `<p>Koniec gry! Twój wynik to: ${score}</p>`;
+    createStartButton();
+  }
+
   function createGameHearts() {
+    if (!gameStarted) return;
     gameHearts.innerHTML = '';
     for (let i = 0; i < 15; i++) {
+      const isGolden = Math.random() < 0.2;
       const heart = document.createElement('div');
-      heart.className = 'game-heart';
+      heart.className = 'game-heart' + (isGolden ? ' golden' : '');
       heart.style.animationDelay = `${Math.random() * 2}s`;
       heart.style.animation = 'heart-float 3s ease-in-out infinite';
       
       heart.addEventListener('click', () => {
-        if (!heart.classList.contains('clicked')) {
+        if (!heart.classList.contains('clicked') && gameStarted) {
           heart.classList.add('clicked');
-          score += 10;
+          const points = isGolden ? 50 : 10;
+          score += points;
           gameScore.textContent = score;
           
-          // Add confetti
-          if (window.confetti) {
-            confetti({
-              particleCount: 20,
-              spread: 45,
-              origin: { y: 0.6 }
-            });
-          }
-          
-          // Add score animation
+          playBeep(isGolden ? 1200 : 800, 0.1, 'triangle');
+
           if (window.gsap) {
+            gsap.to(heart, {
+              scale: 1.5,
+              opacity: 0,
+              duration: 0.3,
+              ease: 'power2.out',
+              onComplete: () => heart.remove()
+            });
             gsap.to(gameScore, {
               scale: 1.3,
               duration: 0.3,
@@ -1664,15 +1704,13 @@ document.addEventListener('DOMContentLoaded', () => {
               yoyo: true,
               repeat: 1
             });
-          }
-          
-          // Remove heart after animation
-          setTimeout(() => {
+          } else {
             heart.remove();
-            if (gameHearts.children.length === 0) {
-              setTimeout(createGameHearts, 1000);
-            }
-          }, 600);
+          }
+
+          if (gameHearts.children.length === 0) {
+            setTimeout(createGameHearts, 500);
+          }
         }
       });
       
@@ -1680,17 +1718,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
   
-  // Add floating animation CSS
-  const style = document.createElement('style');
-  style.textContent = `
-    @keyframes heart-float {
-      0%, 100% { transform: rotate(45deg) translateY(0px); }
-      50% { transform: rotate(45deg) translateY(-10px); }
-    }
-  `;
-  document.head.appendChild(style);
-  
-  createGameHearts();
+  createStartButton();
 })();
 
 /* ===== Mood Tracker ===== */
@@ -1999,2139 +2027,278 @@ document.addEventListener('DOMContentLoaded', () => {
         Math.random() * (canvas.height / 2)
       ));
     }
-    
-    if (!animationId) animate();
   });
   
   clearParticlesBtn?.addEventListener('click', () => {
     particles.length = 0;
-    if (animationId) {
-      cancelAnimationFrame(animationId);
-      animationId = null;
-    }
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
   });
   
   explosionBtn?.addEventListener('click', () => {
-    const centerX = canvas.width / 4;
-    const centerY = canvas.height / 4;
-    
-    for (let i = 0; i < 50; i++) {
-      const angle = (i / 50) * Math.PI * 2;
-      const speed = Math.random() * 8 + 4;
-      const particle = new Particle(centerX, centerY);
-      particle.vx = Math.cos(angle) * speed;
-      particle.vy = Math.sin(angle) * speed;
-      particles.push(particle);
-    }
-    
-    if (!animationId) animate();
-    
-    // Add confetti explosion
-    if (window.confetti) {
-      confetti({
-        particleCount: 150,
-        spread: 180,
-        origin: { y: 0.6 }
-      });
+    for (let i = 0; i < 100; i++) {
+      particles.push(new Particle(
+        canvas.width / 4,
+        canvas.height / 4
+      ));
     }
   });
   
-  // Start animation
   animate();
-})();
-
-/* ===== Voice Recorder ===== */
-(function voiceRecorder() {
-  const startRecordingBtn = $('#startRecording');
-  const stopRecordingBtn = $('#stopRecording');
-  const playRecordingBtn = $('#playRecording');
-  const waveform = $('#waveform');
-  const recordingTime = $('#recordingTime');
-  
-  let mediaRecorder;
-  let audioChunks = [];
-  let recordingStartTime;
-  let recordingInterval;
-  let recordedAudio;
-  
-  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-    logger.warn('Media recording not supported');
-    return;
-  }
-  
-  startRecordingBtn?.addEventListener('click', async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      mediaRecorder = new MediaRecorder(stream);
-      audioChunks = [];
-      
-      mediaRecorder.ondataavailable = (event) => {
-        audioChunks.push(event.data);
-      };
-      
-      mediaRecorder.onstop = () => {
-        const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
-        recordedAudio = URL.createObjectURL(audioBlob);
-        playRecordingBtn.disabled = false;
-        stopRecordingBtn.disabled = true;
-        startRecordingBtn.disabled = false;
-        
-        // Stop all tracks
-        stream.getTracks().forEach(track => track.stop());
-        
-        clearInterval(recordingInterval);
-        waveform.style.animationPlayState = 'paused';
-      };
-      
-      mediaRecorder.start();
-      recordingStartTime = Date.now();
-      startRecordingBtn.disabled = true;
-      stopRecordingBtn.disabled = false;
-      playRecordingBtn.disabled = true;
-      
-      // Start timer
-      recordingInterval = setInterval(() => {
-        const elapsed = Date.now() - recordingStartTime;
-        const seconds = Math.floor(elapsed / 1000);
-        const minutes = Math.floor(seconds / 60);
-        recordingTime.textContent = `${minutes.toString().padStart(2, '0')}:${(seconds % 60).toString().padStart(2, '0')}`;
-      }, 1000);
-      
-      waveform.style.animationPlayState = 'running';
-      
-    } catch (error) {
-      logger.error('Error starting recording:', error);
-      alert('Nie można rozpocząć nagrywania. Sprawdź uprawnienia mikrofonu.');
-    }
-  });
-  
-  stopRecordingBtn?.addEventListener('click', () => {
-    if (mediaRecorder && mediaRecorder.state === 'recording') {
-      mediaRecorder.stop();
-    }
-  });
-  
-  playRecordingBtn?.addEventListener('click', () => {
-    if (recordedAudio) {
-      const audio = new Audio(recordedAudio);
-      audio.play();
-    }
-  });
 })();
 
 /* ===== Wish Garden ===== */
 (function wishGarden() {
-  const canvas = $('#gardenCanvas');
-  if (!canvas) return;
-  
-  const ctx = canvas.getContext('2d');
-  const plantWishBtn = $('#plantWish');
-  const waterGardenBtn = $('#waterGarden');
-  const harvestWishesBtn = $('#harvestWishes');
-  
-  const wishesPlantedEl = $('#wishesPlanted');
-  const wishesBloomedEl = $('#wishesBloomed');
-  const gardenLevelEl = $('#gardenLevel');
-  
-  let gardenData = {
-    wishes: [],
-    waterLevel: 100,
-    level: 1,
-    planted: 0,
-    bloomed: 0
-  };
-  
-  // Load garden data from localStorage
-  try {
-    const saved = localStorage.getItem('wishGarden');
-    if (saved) {
-      gardenData = { ...gardenData, ...JSON.parse(saved) };
-      updateGardenStats();
-    }
-  } catch (e) {
-    logger.warn('Could not load garden data:', e);
-  }
-  
-  function saveGardenData() {
-    try {
-      localStorage.setItem('wishGarden', JSON.stringify(gardenData));
-    } catch (e) {
-      logger.warn('Could not save garden data:', e);
-    }
-  }
-  
-  function updateGardenStats() {
-    if (wishesPlantedEl) wishesPlantedEl.textContent = gardenData.planted;
-    if (wishesBloomedEl) wishesBloomedEl.textContent = gardenData.bloomed;
-    if (gardenLevelEl) gardenLevelEl.textContent = gardenData.level;
-  }
-  
-  class Wish {
-    constructor(x, y) {
-      this.x = x;
-      this.y = y;
-      this.growth = 0;
-      this.maxGrowth = 100;
-      this.water = 50;
-      this.type = Math.floor(Math.random() * 3); // 0: flower, 1: tree, 2: special
-      this.colors = [
-        ['#ff6b9d', '#ff4d6d', '#ffd166'], // Pink flower
-        ['#4ecdc4', '#44a08d', '#096b72'], // Blue tree
-        ['#ffd93d', '#ff6b6b', '#6bcf7f']  // Special rainbow
-      ];
-    }
-    
-    update() {
-      if (this.growth < this.maxGrowth) {
-        this.growth += 0.5;
-        this.water -= 0.2;
-      }
-      
-      if (this.water <= 0) {
-        this.growth = Math.max(0, this.growth - 1);
-      }
-      
-      if (this.growth >= this.maxGrowth && !this.bloomed) {
-        this.bloomed = true;
-        gardenData.bloomed++;
-        updateGardenStats();
-        saveGardenData();
-      }
-    }
-    
-    draw() {
-      const alpha = this.growth / this.maxGrowth;
-      const size = 10 + (this.growth / 10);
-      
+  const gardenCanvas = document.getElementById('gardenCanvas');
+  if (!gardenCanvas) return;
+
+  const ctx = gardenCanvas.getContext('2d');
+  const plantWishBtn = document.getElementById('plantWish');
+  const waterGardenBtn = document.getElementById('waterGarden');
+  const harvestWishesBtn = document.getElementById('harvestWishes');
+  const wishesPlantedEl = document.getElementById('wishesPlanted');
+  const wishesBloomedEl = document.getElementById('wishesBloomed');
+  const gardenLevelEl = document.getElementById('gardenLevel');
+
+  let wishes = [];
+  let gardenLevel = 1;
+
+  function draw() {
+    ctx.clearRect(0, 0, gardenCanvas.width, gardenCanvas.height);
+    wishes.forEach(wish => {
       ctx.save();
-      ctx.globalAlpha = alpha;
-      
-      if (this.type === 0) { // Flower
-        this.drawFlower(size);
-      } else if (this.type === 1) { // Tree
-        this.drawTree(size);
-      } else { // Special
-        this.drawSpecial(size);
+      ctx.translate(wish.x, wish.y);
+      if (wish.state === 'seed') {
+        ctx.fillStyle = '#8B4513';
+        ctx.beginPath();
+        ctx.arc(0, 0, 5, 0, Math.PI * 2);
+        ctx.fill();
+      } else if (wish.state === 'flower') {
+        ctx.fillStyle = wish.color;
+        for (let i = 0; i < 5; i++) {
+          ctx.beginPath();
+          ctx.ellipse(Math.cos(i * 2 * Math.PI / 5) * 10, Math.sin(i * 2 * Math.PI / 5) * 10, 5, 8, 0, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.fillStyle = '#FFD700';
+        ctx.beginPath();
+        ctx.arc(0, 0, 5, 0, Math.PI * 2);
+        ctx.fill();
       }
-      
       ctx.restore();
-    }
-    
-    drawFlower(size) {
-      const colors = this.colors[0];
-      
-      // Stem
-      ctx.strokeStyle = '#4a7c59';
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.moveTo(this.x, this.y);
-      ctx.lineTo(this.x, this.y - size * 2);
-      ctx.stroke();
-      
-      // Petals
-      for (let i = 0; i < 8; i++) {
-        const angle = (i / 8) * Math.PI * 2;
-        const x = this.x + Math.cos(angle) * size;
-        const y = this.y - size * 2 + Math.sin(angle) * size;
-        
-        ctx.fillStyle = colors[i % colors.length];
-        ctx.beginPath();
-        ctx.arc(x, y, size * 0.3, 0, Math.PI * 2);
-        ctx.fill();
-      }
-      
-      // Center
-      ctx.fillStyle = colors[1];
-      ctx.beginPath();
-      ctx.arc(this.x, this.y - size * 2, size * 0.4, 0, Math.PI * 2);
-      ctx.fill();
-    }
-    
-    drawTree(size) {
-      const colors = this.colors[1];
-      
-      // Trunk
-      ctx.fillStyle = '#8b4513';
-      ctx.fillRect(this.x - size * 0.3, this.y - size * 0.5, size * 0.6, size);
-      
-      // Leaves
-      ctx.fillStyle = colors[0];
-      ctx.beginPath();
-      ctx.arc(this.x, this.y - size * 1.5, size * 1.2, 0, Math.PI * 2);
-      ctx.fill();
-      
-      // Fruits
-      ctx.fillStyle = colors[2];
-      for (let i = 0; i < 5; i++) {
-        const angle = (i / 5) * Math.PI * 2;
-        const x = this.x + Math.cos(angle) * size * 0.8;
-        const y = this.y - size * 1.5 + Math.sin(angle) * size * 0.8;
-        ctx.beginPath();
-        ctx.arc(x, y, size * 0.2, 0, Math.PI * 2);
-        ctx.fill();
-      }
-    }
-    
-    drawSpecial(size) {
-      const colors = this.colors[2];
-      
-      // Rainbow effect
-      for (let i = 0; i < 6; i++) {
-        const angle = (i / 6) * Math.PI * 2;
-        const x = this.x + Math.cos(angle) * size;
-        const y = this.y - size * 1.5 + Math.sin(angle) * size;
-        
-        ctx.fillStyle = colors[i % colors.length];
-        ctx.beginPath();
-        ctx.arc(x, y, size * 0.4, 0, Math.PI * 2);
-        ctx.fill();
-      }
-      
-      // Sparkles
-      ctx.fillStyle = '#ffffff';
-      for (let i = 0; i < 3; i++) {
-        const x = this.x + (Math.random() - 0.5) * size * 2;
-        const y = this.y - size * 1.5 + (Math.random() - 0.5) * size * 2;
-        ctx.beginPath();
-        ctx.arc(x, y, 2, 0, Math.PI * 2);
-        ctx.fill();
-      }
-    }
-  }
-  
-  function drawGarden() {
-    // Clear canvas
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    
-    // Draw background
-    const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
-    gradient.addColorStop(0, '#2d5a27');
-    gradient.addColorStop(1, '#1a3d1a');
-    ctx.fillStyle = gradient;
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    
-    // Draw grass
-    ctx.fillStyle = '#4a7c59';
-    for (let i = 0; i < 50; i++) {
-      const x = Math.random() * canvas.width;
-      const y = canvas.height - Math.random() * 20;
-      ctx.fillRect(x, y, 2, 20);
-    }
-    
-    // Draw wishes
-    gardenData.wishes.forEach(wish => {
-      wish.update();
-      wish.draw();
     });
-    
-    // Draw water level indicator
-    ctx.fillStyle = 'rgba(0, 150, 255, 0.3)';
-    ctx.fillRect(10, 10, 20, (canvas.height - 20) * (gardenData.waterLevel / 100));
-    
-    // Draw water level text
-    ctx.fillStyle = '#ffffff';
-    ctx.font = '12px Arial';
-    ctx.fillText(`💧 ${Math.round(gardenData.waterLevel)}%`, 35, 25);
   }
-  
-  function animate() {
-    drawGarden();
-    requestAnimationFrame(animate);
-  }
-  
-  // Event listeners
-  plantWishBtn?.addEventListener('click', () => {
-    if (gardenData.wishes.length < 20) {
-      const x = Math.random() * (canvas.width - 100) + 50;
-      const y = canvas.height - 20;
-      
-      const wish = new Wish(x, y);
-      gardenData.wishes.push(wish);
-      gardenData.planted++;
-      
-      updateGardenStats();
-      saveGardenData();
-      
-      // Add some water when planting
-      gardenData.waterLevel = Math.min(100, gardenData.waterLevel + 10);
-      
-      // Confetti effect
-      createParticleBurst(x, y, '#ff6b9d');
-    }
-  });
-  
-  waterGardenBtn?.addEventListener('click', () => {
-    gardenData.waterLevel = Math.min(100, gardenData.waterLevel + 30);
-    gardenData.wishes.forEach(wish => {
-      wish.water = Math.min(100, wish.water + 20);
-    });
-    
-    // Rain effect
-    for (let i = 0; i < 20; i++) {
-      setTimeout(() => {
-        const x = Math.random() * canvas.width;
-        const y = 0;
-        createParticleBurst(x, y, '#00aaff');
-      }, i * 100);
-    }
-  });
-  
-  harvestWishesBtn?.addEventListener('click', () => {
-    const harvested = gardenData.wishes.filter(wish => wish.bloomed).length;
-    if (harvested > 0) {
-      gardenData.wishes = gardenData.wishes.filter(wish => !wish.bloomed);
-      gardenData.bloomed = 0;
-      
-      // Level up
-      gardenData.level += Math.floor(harvested / 5);
-      
-      updateGardenStats();
-      saveGardenData();
-      
-      // Celebration effect
-      for (let i = 0; i < harvested; i++) {
-        setTimeout(() => {
-          const x = Math.random() * canvas.width;
-          const y = Math.random() * canvas.height;
-          createParticleBurst(x, y, '#ffd166');
-        }, i * 200);
-      }
-    }
-  });
-  
-  // Canvas click to plant wishes
-  canvas.addEventListener('click', (e) => {
-    if (gardenData.wishes.length < 20) {
-      const rect = canvas.getBoundingClientRect();
-      const x = e.clientX - rect.left;
-      const y = e.clientY - rect.top;
-      
-      const wish = new Wish(x, y);
-      gardenData.wishes.push(wish);
-      gardenData.planted++;
-      
-      updateGardenStats();
-      saveGardenData();
-      
-      createParticleBurst(x, y, '#ff6b9d');
-    }
-  });
-  
-  // Start animation
-  animate();
-})();
 
-/* ===== Love Weather ===== */
-(function loveWeather() {
-  const weatherIcon = $('#weatherIcon');
-  const loveTemp = $('#loveTemp');
-  const loveCondition = $('#loveCondition');
-  const changeWeatherBtn = $('#changeWeather');
-  const loveStormBtn = $('#loveStorm');
-  const rainbowModeBtn = $('#rainbowMode');
-  
-  const weatherStates = [
-    { icon: '☀️', temp: '25°C', condition: 'Słonecznie z miłością', color: '#ffd166' },
-    { icon: '🌤️', temp: '22°C', condition: 'Lekko pochmurno, ale serce świeci', color: '#ffb3ba' },
-    { icon: '⛅', temp: '20°C', condition: 'Półsłonecznie z nutką romansu', color: '#ff9a9e' },
-    { icon: '🌧️', temp: '18°C', condition: 'Deszcz miłości pada z nieba', color: '#a8e6cf' },
-    { icon: '🌈', temp: '30°C', condition: 'Tęczowo i magicznie', color: '#ff6b9d' },
-    { icon: '❄️', temp: '15°C', condition: 'Zimno, ale serce gorące', color: '#b8e6ff' },
-    { icon: '🌙', temp: '23°C', condition: 'Księżycowe światło miłości', color: '#c8a2c8' },
-    { icon: '⭐', temp: '27°C', condition: 'Gwieździsta noc pełna marzeń', color: '#ffd700' }
-  ];
-  
-  let currentWeather = 0;
-  let isRainbowMode = false;
-  let rainbowInterval;
-  
-  function updateWeather(index) {
-    const weather = weatherStates[index];
-    if (weatherIcon) weatherIcon.textContent = weather.icon;
-    if (loveTemp) loveTemp.textContent = weather.temp;
-    if (loveCondition) loveCondition.textContent = weather.condition;
-    
-    // Update temperature color
-    if (loveTemp) loveTemp.style.color = weather.color;
-    
-    // Add weather effects
-    document.body.style.setProperty('--weather-glow', weather.color);
-  }
-  
-  function startRainbowMode() {
-    if (isRainbowMode) return;
-    
-    isRainbowMode = true;
-    rainbowModeBtn.style.background = 'var(--primary)';
-    rainbowModeBtn.style.color = 'white';
-    
-    let hue = 0;
-    rainbowInterval = setInterval(() => {
-      hue = (hue + 1) % 360;
-      const color = `hsl(${hue}, 70%, 60%)`;
-      
-      if (loveTemp) loveTemp.style.color = color;
-      if (loveCondition) loveCondition.style.color = color;
-      
-      // Add rainbow particles
-      if (Math.random() < 0.3) {
-        const x = Math.random() * window.innerWidth;
-        const y = Math.random() * window.innerHeight;
-        createParticleBurst(x, y, color);
-      }
-    }, 100);
-  }
-  
-  function stopRainbowMode() {
-    if (!isRainbowMode) return;
-    
-    isRainbowMode = false;
-    rainbowModeBtn.style.background = 'var(--glass)';
-    rainbowModeBtn.style.color = 'var(--text)';
-    
-    clearInterval(rainbowInterval);
-    
-    // Reset colors
-    updateWeather(currentWeather);
-  }
-  
-  // Event listeners
-  changeWeatherBtn?.addEventListener('click', () => {
-    currentWeather = (currentWeather + 1) % weatherStates.length;
-    updateWeather(currentWeather);
-    
-    // Weather change effect
-    createParticleBurst(
-      Math.random() * window.innerWidth,
-      Math.random() * window.innerHeight,
-      weatherStates[currentWeather].color
-    );
-  });
-  
-  loveStormBtn?.addEventListener('click', () => {
-    // Create storm effect
-    for (let i = 0; i < 30; i++) {
-      setTimeout(() => {
-        const x = Math.random() * window.innerWidth;
-        const y = Math.random() * window.innerHeight;
-        createParticleBurst(x, y, '#00aaff');
-      }, i * 100);
-    }
-    
-    // Change to storm weather
-    currentWeather = 3; // Rain
-    updateWeather(currentWeather);
-    
-    // Add lightning effect
-    document.body.style.filter = 'brightness(1.5)';
-    setTimeout(() => {
-      document.body.style.filter = 'brightness(1)';
-    }, 200);
-  });
-  
-  rainbowModeBtn?.addEventListener('click', () => {
-    if (isRainbowMode) {
-      stopRainbowMode();
-    } else {
-      startRainbowMode();
-    }
-  });
-  
-  // Initialize weather
-  updateWeather(currentWeather);
-  
-  // Auto weather change every 30 seconds
-  setInterval(() => {
-    if (!isRainbowMode) {
-      currentWeather = (currentWeather + 1) % weatherStates.length;
-      updateWeather(currentWeather);
-    }
-  }, 30000);
-})(); 
-
-/* ===== Memory Gallery 3D ===== */
-(function memoryGallery() {
-  const prevMemoryBtn = $('#prevMemory');
-  const nextMemoryBtn = $('#nextMemory');
-  const autoPlayBtn = $('#autoPlay');
-  const fullscreenBtn = $('#fullscreen');
-  const memoryFrame = $('#memoryFrame');
-  const memoryTitle = $('.memory-title');
-  const memoryDescription = $('.memory-description');
-  const memoryDate = $('.memory-date');
-  const thumbnails = $$('.thumbnail');
-  const totalMemoriesEl = $('#totalMemories');
-  const memoryLikesEl = $('#memoryLikes');
-  const memoryRatingEl = $('#memoryRating');
-  
-  const memories = [
-    {
-      icon: '💕',
-      title: 'Nasze pierwsze spotkanie',
-      description: 'Tego dnia wszystko się zmieniło. Twoje oczy rozświetliły mój świat i od tamtej chwili wiem, że życie bez Ciebie nie ma sensu.',
-      date: '14 lutego 2024',
-      likes: 0,
-      rating: 5.0
-    },
-    {
-      icon: '🌅',
-      title: 'Wspólny poranek',
-      description: 'Budzę się z myślą o Tobie. Każdy poranek jest piękniejszy, gdy wiem, że mogę Cię zobaczyć i usłyszeć Twój głos.',
-      date: '15 lutego 2024',
-      likes: 0,
-      rating: 5.0
-    },
-    {
-      icon: '🎭',
-      title: 'Nasze przygody',
-      description: 'Każdy dzień z Tobą to nowa przygoda. Wspólnie odkrywamy świat i tworzymy wspomnienia, które będą trwać wiecznie.',
-      date: '16 lutego 2024',
-      likes: 0,
-      rating: 5.0
-    },
-    {
-      icon: '🌸',
-      title: 'Wiosenne spacery',
-      description: 'Wiosna przyszła wcześnie w tym roku. Spacerujemy razem, trzymając się za ręce, a świat wokół nas kwitnie jak nasza miłość.',
-      date: '17 lutego 2024',
-      likes: 0,
-      rating: 5.0
-    },
-    {
-      icon: '🌙',
-      title: 'Wieczorne rozmowy',
-      description: 'Pod gwiazdami rozmawiamy o wszystkim i o niczym. Twoje słowa są muzyką dla moich uszu, a Twój śmiech rozświetla noc.',
-      date: '18 lutego 2024',
-      likes: 0,
-      rating: 5.0
-    }
-  ];
-  
-  let currentMemoryIndex = 0;
-  let isAutoPlaying = false;
-  let autoPlayInterval;
-  let isFullscreen = false;
-  
-  // Load saved data
-  try {
-    const savedMemories = localStorage.getItem('memoryGallery');
-    if (savedMemories) {
-      const parsed = JSON.parse(savedMemories);
-      memories.forEach((memory, index) => {
-        if (parsed[index]) {
-          memory.likes = parsed[index].likes || 0;
-          memory.rating = parsed[index].rating || 5.0;
-        }
+  plantWishBtn.addEventListener('click', () => {
+    if (wishes.length < 10) {
+      wishes.push({
+        x: Math.random() * gardenCanvas.width,
+        y: Math.random() * gardenCanvas.height,
+        state: 'seed',
+        color: `hsl(${Math.random() * 360}, 70%, 60%)`
       });
-    }
-  } catch (e) {
-    logger.warn('Could not load memory gallery data:', e);
-  }
-  
-  function saveMemoryData() {
-    try {
-      const dataToSave = memories.map(memory => ({
-        likes: memory.likes,
-        rating: memory.rating
-      }));
-      localStorage.setItem('memoryGallery', JSON.stringify(dataToSave));
-    } catch (e) {
-      logger.warn('Could not save memory gallery data:', e);
-    }
-  }
-  
-  function updateMemoryDisplay() {
-    const memory = memories[currentMemoryIndex];
-    
-    // Update main display
-    if (memoryTitle) memoryTitle.textContent = memory.title;
-    if (memoryDescription) memoryDescription.textContent = memory.description;
-    if (memoryDate) memoryDate.textContent = memory.date;
-    
-    // Update placeholder image
-    const placeholderImage = $('.placeholder-image');
-    if (placeholderImage) placeholderImage.textContent = memory.icon;
-    
-    // Update thumbnails
-    thumbnails.forEach((thumb, index) => {
-      thumb.classList.toggle('active', index === currentMemoryIndex);
-    });
-    
-    // Update stats
-    if (totalMemoriesEl) totalMemoriesEl.textContent = memories.length;
-    if (memoryLikesEl) memoryLikesEl.textContent = memory.likes;
-    if (memoryRatingEl) memoryRatingEl.textContent = memory.rating.toFixed(1);
-    
-    // Add transition effect
-    if (memoryFrame) {
-      memoryFrame.classList.add('transitioning');
-      setTimeout(() => {
-        memoryFrame.classList.remove('transitioning');
-      }, 600);
-    }
-  }
-  
-  function nextMemory() {
-    currentMemoryIndex = (currentMemoryIndex + 1) % memories.length;
-    updateMemoryDisplay();
-  }
-  
-  function prevMemory() {
-    currentMemoryIndex = currentMemoryIndex === 0 ? memories.length - 1 : currentMemoryIndex - 1;
-    updateMemoryDisplay();
-  }
-  
-  function toggleAutoPlay() {
-    if (isAutoPlaying) {
-      stopAutoPlay();
-    } else {
-      startAutoPlay();
-    }
-  }
-  
-  function startAutoPlay() {
-    isAutoPlaying = true;
-    if (autoPlayBtn) {
-      autoPlayBtn.textContent = '⏸️ Zatrzymaj';
-      autoPlayBtn.style.background = 'var(--accent)';
-    }
-    
-    autoPlayInterval = setInterval(() => {
-      nextMemory();
-    }, 3000);
-  }
-  
-  function stopAutoPlay() {
-    isAutoPlaying = false;
-    if (autoPlayBtn) {
-      autoPlayBtn.textContent = '▶️ Auto-odtwarzanie';
-      autoPlayBtn.style.background = 'var(--primary)';
-    }
-    
-    if (autoPlayInterval) {
-      clearInterval(autoPlayInterval);
-    }
-  }
-  
-  function toggleFullscreen() {
-    if (!isFullscreen) {
-      enterFullscreen();
-    } else {
-      exitFullscreen();
-    }
-  }
-  
-  function enterFullscreen() {
-    if (memoryFrame) {
-      memoryFrame.classList.add('fullscreen');
-      isFullscreen = true;
-      if (fullscreenBtn) fullscreenBtn.textContent = '🔍 Wyjdź z pełnego ekranu';
-    }
-  }
-  
-  function exitFullscreen() {
-    if (memoryFrame) {
-      memoryFrame.classList.remove('fullscreen');
-      isFullscreen = false;
-      if (fullscreenBtn) fullscreenBtn.textContent = '🔍 Pełny ekran';
-    }
-  }
-  
-  function likeMemory() {
-    memories[currentMemoryIndex].likes++;
-    updateMemoryDisplay();
-    saveMemoryData();
-    
-    // Add like effect
-    createParticleBurst(
-      Math.random() * window.innerWidth,
-      Math.random() * window.innerHeight,
-      '#ff4d6d'
-    );
-  }
-  
-  // Event listeners
-  prevMemoryBtn?.addEventListener('click', () => {
-    prevMemory();
-    if (isAutoPlaying) stopAutoPlay();
-  });
-  
-  nextMemoryBtn?.addEventListener('click', () => {
-    nextMemory();
-    if (isAutoPlaying) stopAutoPlay();
-  });
-  
-  autoPlayBtn?.addEventListener('click', toggleAutoPlay);
-  
-  fullscreenBtn?.addEventListener('click', toggleFullscreen);
-  
-  // Thumbnail clicks
-  thumbnails.forEach((thumb, index) => {
-    thumb.addEventListener('click', () => {
-      currentMemoryIndex = index;
-      updateMemoryDisplay();
-      if (isAutoPlaying) stopAutoPlay();
-    });
-  });
-  
-  // Keyboard navigation
-  document.addEventListener('keydown', (e) => {
-    if (isFullscreen) {
-      switch (e.key) {
-        case 'ArrowLeft':
-          e.preventDefault();
-          prevMemory();
-          break;
-        case 'ArrowRight':
-          e.preventDefault();
-          nextMemory();
-          break;
-        case 'Escape':
-          e.preventDefault();
-          exitFullscreen();
-          break;
-        case ' ':
-          e.preventDefault();
-          toggleAutoPlay();
-          break;
-      }
-    }
-  });
-  
-  // Memory frame click to like
-  memoryFrame?.addEventListener('click', (e) => {
-    // Don't trigger like if clicking on controls
-    if (e.target.closest('.gallery-controls') || e.target.closest('.memory-thumbnails')) {
-      return;
-    }
-    likeMemory();
-  });
-  
-  // Double click to enter fullscreen
-  memoryFrame?.addEventListener('dblclick', () => {
-    if (!isFullscreen) {
-      enterFullscreen();
-    }
-  });
-  
-  // Initialize
-  updateMemoryDisplay();
-  
-  // Auto-advance on hover (subtle effect)
-  let hoverTimeout;
-  memoryFrame?.addEventListener('mouseenter', () => {
-    if (!isAutoPlaying) {
-      hoverTimeout = setTimeout(() => {
-        nextMemory();
-      }, 5000);
-    }
-  });
-  
-  memoryFrame?.addEventListener('mouseleave', () => {
-    if (hoverTimeout) {
-      clearTimeout(hoverTimeout);
-    }
-  });
-})();
-
-/* ===== Love Calendar ===== */
-(function loveCalendar() {
-  const prevMonthBtn = $('#prevMonth');
-  const nextMonthBtn = $('#nextMonth');
-  const currentMonthEl = $('#currentMonth');
-  const calendarDaysEl = $('#calendarDays');
-  const eventsListEl = $('#eventsList');
-  const addEventBtn = $('#addEvent');
-  const daysTogetherEl = $('#daysTogether');
-  const specialDaysEl = $('#specialDays');
-  const totalEventsEl = $('#totalEvents');
-  
-  let currentDate = new Date();
-  let selectedDate = new Date();
-  let events = [];
-  
-  // Load events from localStorage
-  try {
-    const savedEvents = localStorage.getItem('loveCalendarEvents');
-    if (savedEvents) {
-      events = JSON.parse(savedEvents);
-    }
-  } catch (e) {
-    logger.warn('Could not load calendar events:', e);
-  }
-  
-  // Save events to localStorage
-  function saveEvents() {
-    try {
-      localStorage.setItem('loveCalendarEvents', JSON.stringify(events));
-    } catch (e) {
-      logger.warn('Could not save calendar events:', e);
-    }
-  }
-  
-  // Calculate days together (since Valentine's Day 2024)
-  function calculateDaysTogether() {
-    const startDate = new Date('2024-02-14');
-    const today = new Date();
-    const diffTime = Math.abs(today - startDate);
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    return diffDays;
-  }
-  
-  // Update calendar stats
-  function updateStats() {
-    const daysTogether = calculateDaysTogether();
-    const specialDays = events.filter(event => event.type === 'special').length;
-    const totalEvents = events.length;
-    
-    if (daysTogetherEl) daysTogetherEl.textContent = daysTogether;
-    if (specialDaysEl) specialDaysEl.textContent = specialDays;
-    if (totalEventsEl) totalEventsEl.textContent = totalEvents;
-  }
-  
-  // Generate calendar for current month
-  function generateCalendar() {
-    const year = currentDate.getFullYear();
-    const month = currentDate.getMonth();
-    
-    // Update month display
-    const monthNames = [
-      'Styczeń', 'Luty', 'Marzec', 'Kwiecień', 'Maj', 'Czerwiec',
-      'Lipiec', 'Sierpień', 'Wrzesień', 'Październik', 'Listopad', 'Grudzień'
-    ];
-    
-    if (currentMonthEl) currentMonthEl.textContent = `${monthNames[month]} ${year}`;
-    
-    // Get first day of month and number of days
-    const firstDay = new Date(year, month, 1);
-    const lastDay = new Date(year, month + 1, 0);
-    const startDate = new Date(firstDay);
-    startDate.setDate(startDate.getDate() - firstDay.getDay() + (firstDay.getDay() === 0 ? -6 : 1));
-    
-    // Clear previous calendar
-    if (calendarDaysEl) calendarDaysEl.innerHTML = '';
-    
-    // Generate calendar days
-    for (let i = 0; i < 42; i++) {
-      const date = new Date(startDate);
-      date.setDate(startDate.getDate() + i);
-      
-      const dayEl = document.createElement('div');
-      dayEl.className = 'calendar-day';
-      dayEl.textContent = date.getDate();
-      
-      // Check if it's today
-      const today = new Date();
-      if (date.toDateString() === today.toDateString()) {
-        dayEl.classList.add('today');
-      }
-      
-      // Check if it's current month
-      if (date.getMonth() !== month) {
-        dayEl.classList.add('other-month');
-      }
-      
-      // Check if it has events
-      const dayEvents = events.filter(event => {
-        const eventDate = new Date(event.date);
-        return eventDate.toDateString() === date.toDateString();
-      });
-      
-      if (dayEvents.length > 0) {
-        dayEl.classList.add('has-event');
-        
-        // Add event indicator
-        const indicator = document.createElement('div');
-        indicator.className = 'event-indicator';
-        dayEl.appendChild(indicator);
-        
-        // Check if it's a special day
-        if (dayEvents.some(event => event.type === 'special')) {
-          dayEl.classList.add('special');
-        }
-      }
-      
-      // Add click event
-      dayEl.addEventListener('click', () => {
-        selectedDate = date;
-        showEventsForDate(date);
-      });
-      
-      if (calendarDaysEl) calendarDaysEl.appendChild(dayEl);
-    }
-  }
-  
-  // Show events for selected date
-  function showEventsForDate(date) {
-    const dayEvents = events.filter(event => {
-      const eventDate = new Date(event.date);
-      return eventDate.toDateString() === date.toDateString();
-    });
-    
-    if (eventsListEl) {
-      eventsListEl.innerHTML = '';
-      
-      if (dayEvents.length === 0) {
-        const noEvents = document.createElement('div');
-        noEvents.textContent = 'Brak wydarzeń w tym dniu';
-        noEvents.style.textAlign = 'center';
-        noEvents.style.color = 'var(--muted)';
-        noEvents.style.padding = '1rem';
-        eventsListEl.appendChild(noEvents);
-      } else {
-        dayEvents.forEach(event => {
-          const eventEl = createEventElement(event);
-          eventsListEl.appendChild(eventEl);
-        });
-      }
-    }
-  }
-  
-  // Create event element
-  function createEventElement(event) {
-    const eventEl = document.createElement('div');
-    eventEl.className = 'event-item';
-    
-    const icon = document.createElement('div');
-    icon.className = 'event-icon';
-    icon.textContent = getEventIcon(event.type);
-    
-    const details = document.createElement('div');
-    details.className = 'event-details';
-    
-    const title = document.createElement('div');
-    title.className = 'event-title';
-    title.textContent = event.title;
-    
-    const date = document.createElement('div');
-    date.className = 'event-date';
-    date.textContent = new Date(event.date).toLocaleDateString('pl-PL');
-    
-    details.appendChild(title);
-    details.appendChild(date);
-    
-    const actions = document.createElement('div');
-    actions.className = 'event-actions';
-    
-    const editBtn = document.createElement('button');
-    editBtn.className = 'event-btn';
-    editBtn.innerHTML = '✏️';
-    editBtn.title = 'Edytuj';
-    editBtn.addEventListener('click', () => editEvent(event));
-    
-    const deleteBtn = document.createElement('button');
-    deleteBtn.className = 'event-btn';
-    deleteBtn.innerHTML = '🗑️';
-    deleteBtn.title = 'Usuń';
-    deleteBtn.addEventListener('click', () => deleteEvent(event));
-    
-    actions.appendChild(editBtn);
-    actions.appendChild(deleteBtn);
-    
-    eventEl.appendChild(icon);
-    eventEl.appendChild(details);
-    eventEl.appendChild(actions);
-    
-    return eventEl;
-  }
-  
-  // Get event icon based on type
-  function getEventIcon(type) {
-    const icons = {
-      'date': '💕',
-      'anniversary': '🎉',
-      'special': '⭐',
-      'reminder': '📝',
-      'gift': '🎁',
-      'travel': '✈️',
-      'dinner': '🍽️',
-      'movie': '🎬',
-      'other': '📅'
-    };
-    return icons[type] || icons.other;
-  }
-  
-  // Add new event
-  function addEvent() {
-    showEventModal();
-  }
-  
-  // Edit event
-  function editEvent(event) {
-    showEventModal(event);
-  }
-  
-  // Delete event
-  function deleteEvent(event) {
-    if (confirm('Czy na pewno chcesz usunąć to wydarzenie?')) {
-      const index = events.findIndex(e => e.id === event.id);
-      if (index > -1) {
-        events.splice(index, 1);
-        saveEvents();
-        generateCalendar();
-        showEventsForDate(selectedDate);
-        updateStats();
-      }
-    }
-  }
-  
-  // Show event modal
-  function showEventModal(event = null) {
-    const modal = document.createElement('div');
-    modal.className = 'event-modal';
-    modal.innerHTML = `
-      <div class="event-modal-content">
-        <h3>${event ? 'Edytuj wydarzenie' : 'Dodaj nowe wydarzenie'}</h3>
-        <form class="event-form" id="eventForm">
-          <div class="form-group">
-            <label for="eventTitle">Tytuł</label>
-            <input type="text" id="eventTitle" required value="${event ? event.title : ''}">
-          </div>
-          <div class="form-group">
-            <label for="eventDate">Data</label>
-            <input type="date" id="eventDate" required value="${event ? event.date : ''}">
-          </div>
-          <div class="form-group">
-            <label for="eventType">Typ</label>
-            <select id="eventType">
-              <option value="date" ${event && event.type === 'date' ? 'selected' : ''}>Randka</option>
-              <option value="anniversary" ${event && event.type === 'anniversary' ? 'selected' : ''}>Rocznica</option>
-              <option value="special" ${event && event.type === 'special' ? 'selected' : ''}>Specjalne</option>
-              <option value="reminder" ${event && event.type === 'reminder' ? 'selected' : ''}>Przypomnienie</option>
-              <option value="gift" ${event && event.type === 'gift' ? 'selected' : ''}>Prezent</option>
-              <option value="travel" ${event && event.type === 'travel' ? 'selected' : ''}>Podróż</option>
-              <option value="dinner" ${event && event.type === 'dinner' ? 'selected' : ''}>Kolacja</option>
-              <option value="movie" ${event && event.type === 'movie' ? 'selected' : ''}>Film</option>
-              <option value="other" ${event && event.type === 'other' ? 'selected' : ''}>Inne</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label for="eventDescription">Opis (opcjonalnie)</label>
-            <textarea id="eventDescription" rows="3">${event ? event.description || '' : ''}</textarea>
-          </div>
-          <div class="form-actions">
-            <button type="button" class="btn ghost" onclick="this.closest('.event-modal').remove()">Anuluj</button>
-            <button type="submit" class="btn primary">${event ? 'Zapisz' : 'Dodaj'}</button>
-          </div>
-        </form>
-      </div>
-    `;
-    
-    document.body.appendChild(modal);
-    
-    // Show modal
-    setTimeout(() => modal.classList.add('active'), 10);
-    
-    // Handle form submission
-    const form = modal.querySelector('#eventForm');
-    form.addEventListener('submit', (e) => {
-      e.preventDefault();
-      
-      const formData = new FormData(form);
-      const eventData = {
-        id: event ? event.id : Date.now().toString(),
-        title: formData.get('eventTitle') || form.querySelector('#eventTitle').value,
-        date: formData.get('eventDate') || form.querySelector('#eventDate').value,
-        type: formData.get('eventType') || form.querySelector('#eventType').value,
-        description: formData.get('eventDescription') || form.querySelector('#eventDescription').value
-      };
-      
-      if (event) {
-        // Edit existing event
-        const index = events.findIndex(e => e.id === event.id);
-        if (index > -1) {
-          events[index] = eventData;
-        }
-      } else {
-        // Add new event
-        events.push(eventData);
-      }
-      
-      saveEvents();
-      generateCalendar();
-      showEventsForDate(selectedDate);
       updateStats();
-      
-      // Close modal
-      modal.remove();
-      
-      // Confetti effect
-      createParticleBurst(
-        Math.random() * window.innerWidth,
-        Math.random() * window.innerHeight,
-        '#ff4d6d'
-      );
+      draw();
+    }
+  });
+
+  waterGardenBtn.addEventListener('click', () => {
+    wishes.forEach(wish => {
+      if (wish.state === 'seed') {
+        wish.state = 'flower';
+      }
     });
+    updateStats();
+    draw();
+  });
+
+  harvestWishesBtn.addEventListener('click', () => {
+    wishes = wishes.filter(wish => wish.state !== 'flower');
+    updateStats();
+    draw();
+  });
+
+  function updateStats() {
+    const planted = wishes.length;
+    const bloomed = wishes.filter(w => w.state === 'flower').length;
+    wishesPlantedEl.textContent = planted;
+    wishesBloomedEl.textContent = bloomed;
+    gardenLevelEl.textContent = Math.floor(planted / 5) + 1;
   }
-  
-  // Navigate to previous month
-  function prevMonth() {
-    currentDate.setMonth(currentDate.getMonth() - 1);
-    generateCalendar();
-    showEventsForDate(selectedDate);
-  }
-  
-  // Navigate to next month
-  function nextMonth() {
-    currentDate.setMonth(currentDate.getMonth() + 1);
-    generateCalendar();
-    showEventsForDate(selectedDate);
-  }
-  
-  // Event listeners
-  prevMonthBtn?.addEventListener('click', prevMonth);
-  nextMonthBtn?.addEventListener('click', nextMonth);
-  addEventBtn?.addEventListener('click', addEvent);
-  
-  // Initialize calendar
-  generateCalendar();
-  updateStats();
-  
-  // Show events for today
-  showEventsForDate(new Date());
+
+  draw();
 })();
 
 /* ===== Love Quiz ===== */
 (function loveQuiz() {
-  const startQuizBtn = $('#startQuiz');
-  const nextQuestionBtn = $('#nextQuestion');
-  const restartQuizBtn = $('#restartQuiz');
-  const quizProgressEl = $('#quizProgress');
-  const quizProgressTextEl = $('#quizProgressText');
-  const quizScoreEl = $('#quizScore');
-  const quizContentEl = $('#quizContent');
-  const questionTextEl = $('#questionText');
-  const questionOptionsEl = $('#questionOptions');
-  const quizResultsEl = $('#quizResults');
-  const finalScoreEl = $('#finalScore');
-  const resultsMessageEl = $('#resultsMessage');
-  const resultsBreakdownEl = $('#resultsBreakdown');
-  const quizAttemptsEl = $('#quizAttempts');
-  const bestScoreEl = $('#bestScore');
-  const averageScoreEl = $('#averageScore');
-  
+  const quizContainer = document.getElementById('love-quiz');
+  if (!quizContainer) return;
+
+  const startQuizBtn = document.getElementById('startQuiz');
+  const nextQuestionBtn = document.getElementById('nextQuestion');
+  const restartQuizBtn = document.getElementById('restartQuiz');
+  const quizContent = document.getElementById('quizContent');
+  const questionText = document.getElementById('questionText');
+  const questionOptions = document.getElementById('questionOptions');
+  const quizResults = document.getElementById('quizResults');
+  const finalScore = document.getElementById('finalScore');
+  const resultsMessage = document.getElementById('resultsMessage');
+  const quizScoreEl = document.getElementById('quizScore');
+
   const questions = [
     {
-      question: "Co jest najważniejsze w związku?",
-      options: [
-        "Wspólne zainteresowania",
-        "Zaufanie i komunikacja",
-        "Podobny styl życia",
-        "Wspólne plany na przyszłość"
-      ],
-      correct: 1,
-      explanation: "Zaufanie i komunikacja to fundamenty każdego udanego związku."
+      question: "Jaki jest mój ulubiony kolor?",
+      options: ["Różowy", "Czarny", "Fioletowy", "Niebieski"],
+      answer: "Fioletowy"
     },
     {
-      question: "Jak najlepiej rozwiązywać konflikty?",
-      options: [
-        "Unikać ich za wszelką cenę",
-        "Rozmawiać otwarcie i szukać kompromisu",
-        "Czekać aż same się rozwiążą",
-        "Zawsze ustępować partnerowi"
-      ],
-      correct: 1,
-      explanation: "Otwarta komunikacja i kompromis to klucz do rozwiązywania konfliktów."
+      question: "Gdzie byliśmy na pierwszej randce?",
+      options: ["W kinie", "W restauracji", "Na spacerze", "W domu"],
+      answer: "Na spacerze"
     },
     {
-      question: "Co oznacza prawdziwa miłość?",
-      options: [
-        "Zawsze być razem",
-        "Akceptować partnera takim jakim jest",
-        "Mieć te same poglądy",
-        "Spędzać każdą wolną chwilę razem"
-      ],
-      correct: 1,
-      explanation: "Prawdziwa miłość to akceptacja i wsparcie partnera."
-    },
-    {
-      question: "Jak dbać o związek na co dzień?",
-      options: [
-        "Tylko w święta i rocznice",
-        "Małymi gestami każdego dnia",
-        "Dużymi prezentami",
-        "Tylko gdy partner o to poprosi"
-      ],
-      correct: 1,
-      explanation: "Małe, codzienne gesty są najważniejsze w utrzymaniu związku."
-    },
-    {
-      question: "Co robić gdy partner ma gorszy dzień?",
-      options: [
-        "Zostawić go w spokoju",
-        "Być przy nim i wspierać",
-        "Opowiadać o swoich problemach",
-        "Krytykować jego zachowanie"
-      ],
-      correct: 1,
-      explanation: "Wsparcie i obecność to najlepsze co możemy dać partnerowi."
-    },
-    {
-      question: "Jak ważne jest spędzanie czasu razem?",
-      options: [
-        "Wcale nie ważne",
-        "Bardzo ważne, ale nie najważniejsze",
-        "Kluczowe dla związku",
-        "Tylko w weekendy"
-      ],
-      correct: 2,
-      explanation: "Jakościowy czas razem to podstawa udanego związku."
-    },
-    {
-      question: "Co zrobić gdy brakuje nam słów?",
-      options: [
-        "Nic nie mówić",
-        "Użyć gestów i dotyku",
-        "Zmienić temat",
-        "Udać że wszystko jest w porządku"
-      ],
-      correct: 1,
-      explanation: "Czasem gesty mówią więcej niż słowa."
-    },
-    {
-      question: "Jak ważne jest dbanie o siebie w związku?",
-      options: [
-        "Wcale nie ważne",
-        "Ważne, ale nie priorytet",
-        "Bardzo ważne dla obu stron",
-        "Tylko na początku związku"
-      ],
-      correct: 2,
-      explanation: "Dbanie o siebie pozwala być lepszym partnerem."
-    },
-    {
-      question: "Co robić gdy partner ma inne zdanie?",
-      options: [
-        "Przekonywać go do swoich racji",
-        "Słuchać i szanować jego punkt widzenia",
-        "Ignorować różnice",
-        "Kłócić się do skutku"
-      ],
-      correct: 1,
-      explanation: "Różnice w poglądach mogą wzbogacać związek."
-    },
-    {
-      question: "Jakie jest najpiękniejsze w miłości?",
-      options: [
-        "Prezenty i podróże",
-        "Wspólne marzenia i plany",
-        "Codzienna obecność i wsparcie",
-        "Wszystkie powyższe"
-      ],
-      correct: 3,
-      explanation: "Miłość to połączenie wszystkich tych elementów!"
+      question: "Jaka jest moja ulubiona pora roku?",
+      options: ["Wiosna", "Lato", "Jesień", "Zima"],
+      answer: "Jesień"
     }
   ];
-  
-  let currentQuestion = 0;
+
+  let currentQuestionIndex = 0;
   let score = 0;
-  let selectedAnswer = null;
-  let quizStarted = false;
-  let quizStats = {
-    attempts: 0,
-    bestScore: 0,
-    totalScore: 0,
-    averageScore: 0
-  };
-  
-  // Load quiz stats from localStorage
-  try {
-    const savedStats = localStorage.getItem('loveQuizStats');
-    if (savedStats) {
-      quizStats = { ...quizStats, ...JSON.parse(savedStats) };
-      updateQuizStats();
-    }
-  } catch (e) {
-    logger.warn('Could not load quiz stats:', e);
-  }
-  
-  // Save quiz stats to localStorage
-  function saveQuizStats() {
-    try {
-      localStorage.setItem('loveQuizStats', JSON.stringify(quizStats));
-    } catch (e) {
-      logger.warn('Could not save quiz stats:', e);
-    }
-  }
-  
-  // Update quiz stats display
-  function updateQuizStats() {
-    if (quizAttemptsEl) quizAttemptsEl.textContent = quizStats.attempts;
-    if (bestScoreEl) bestScoreEl.textContent = quizStats.bestScore;
-    if (averageScoreEl) averageScoreEl.textContent = quizStats.averageScore.toFixed(1);
-  }
-  
-  // Start quiz
+
+  startQuizBtn.addEventListener('click', startQuiz);
+  nextQuestionBtn.addEventListener('click', nextQuestion);
+  restartQuizBtn.addEventListener('click', restartQuiz);
+
   function startQuiz() {
-    quizStarted = true;
-    currentQuestion = 0;
+    startQuizBtn.style.display = 'none';
+    quizContent.style.display = 'block';
+    nextQuestionBtn.style.display = 'block';
+    restartQuizBtn.style.display = 'none';
+    quizResults.style.display = 'none';
+    currentQuestionIndex = 0;
     score = 0;
-    selectedAnswer = null;
-    
-    if (startQuizBtn) startQuizBtn.style.display = 'none';
-    if (nextQuestionBtn) nextQuestionBtn.style.display = 'none';
-    if (restartQuizBtn) restartQuizBtn.style.display = 'none';
-    if (quizResultsEl) quizResultsEl.style.display = 'none';
-    
-    showQuestion();
+    quizScoreEl.textContent = score;
+    displayQuestion();
   }
-  
-  // Show current question
-  function showQuestion() {
-    const question = questions[currentQuestion];
-    
-    if (questionTextEl) questionTextEl.textContent = question.question;
-    
-    // Update progress
-    if (quizProgressEl) {
-      const progress = ((currentQuestion + 1) / questions.length) * 100;
-      quizProgressEl.style.width = `${progress}%`;
-    }
-    
-    if (quizProgressTextEl) {
-      quizProgressTextEl.textContent = `Pytanie ${currentQuestion + 1} z ${questions.length}`;
-    }
-    
-    // Generate options
-    if (questionOptionsEl) {
-      questionOptionsEl.innerHTML = '';
-      
-      question.options.forEach((option, index) => {
-        const optionEl = document.createElement('div');
-        optionEl.className = 'quiz-option';
-        optionEl.textContent = option;
-        
-        optionEl.addEventListener('click', () => selectAnswer(index));
-        
-        questionOptionsEl.appendChild(optionEl);
-      });
-    }
-    
-    // Add fade-in animation
-    if (quizContentEl) {
-      quizContentEl.classList.add('fade-in');
-      setTimeout(() => {
-        quizContentEl.classList.remove('fade-in');
-      }, 500);
-    }
+
+  function displayQuestion() {
+    const question = questions[currentQuestionIndex];
+    questionText.textContent = question.question;
+    questionOptions.innerHTML = '';
+    question.options.forEach(option => {
+      const button = document.createElement('button');
+      button.textContent = option;
+      button.className = 'btn ghost';
+      button.addEventListener('click', () => checkAnswer(option, button));
+      questionOptions.appendChild(button);
+    });
   }
-  
-  // Select answer
-  function selectAnswer(answerIndex) {
-    if (selectedAnswer !== null) return; // Prevent multiple selections
-    
-    selectedAnswer = answerIndex;
-    const question = questions[currentQuestion];
-    const options = questionOptionsEl.querySelectorAll('.quiz-option');
-    
-    // Mark selected answer
-    options[answerIndex].classList.add('selected');
-    
-    // Check if correct
-    if (answerIndex === question.correct) {
-      options[answerIndex].classList.add('correct');
+
+  function checkAnswer(selectedOption, button) {
+    const question = questions[currentQuestionIndex];
+    if (selectedOption === question.answer) {
       score++;
-      
-      // Confetti effect for correct answer
-      createParticleBurst(
-        Math.random() * window.innerWidth,
-        Math.random() * window.innerHeight,
-        '#4caf50'
-      );
+      quizScoreEl.textContent = score;
+      button.style.background = '#4CAF50';
     } else {
-      options[answerIndex].classList.add('incorrect');
-      options[question.correct].classList.add('correct');
+      button.style.background = '#F44336';
     }
-    
-    // Update score display
-    if (quizScoreEl) quizScoreEl.textContent = score;
-    
-    // Show next question button
-    if (nextQuestionBtn) {
-      nextQuestionBtn.style.display = 'inline-block';
-      nextQuestionBtn.textContent = currentQuestion === questions.length - 1 ? '🏁 Zakończ quiz' : '⏭️ Następne pytanie';
-    }
+    questionOptions.querySelectorAll('button').forEach(btn => btn.disabled = true);
   }
-  
-  // Next question or finish quiz
+
   function nextQuestion() {
-    if (currentQuestion < questions.length - 1) {
-      currentQuestion++;
-      selectedAnswer = null;
-      showQuestion();
-      
-      if (nextQuestionBtn) nextQuestionBtn.style.display = 'none';
+    currentQuestionIndex++;
+    if (currentQuestionIndex < questions.length) {
+      displayQuestion();
     } else {
-      finishQuiz();
+      showResults();
     }
   }
-  
-  // Finish quiz and show results
-  function finishQuiz() {
-    quizStarted = false;
-    
-    // Update stats
-    quizStats.attempts++;
-    quizStats.totalScore += score;
-    quizStats.averageScore = quizStats.totalScore / quizStats.attempts;
-    
-    if (score > quizStats.bestScore) {
-      quizStats.bestScore = score;
-    }
-    
-    saveQuizStats();
-    updateQuizStats();
-    
-    // Hide quiz content
-    if (quizContentEl) quizContentEl.style.display = 'none';
-    if (nextQuestionBtn) nextQuestionBtn.style.display = 'none';
-    
-    // Show results
-    if (quizResultsEl) {
-      quizResultsEl.style.display = 'block';
-      
-      if (finalScoreEl) finalScoreEl.textContent = score;
-      
-      // Generate result message
-      let message = '';
-      if (score === questions.length) {
-        message = '🎉 Doskonały wynik! Jesteś ekspertem w dziedzinie miłości! 💕';
-      } else if (score >= questions.length * 0.8) {
-        message = '🌟 Świetny wynik! Masz dużą wiedzę o miłości i związkach! 💖';
-      } else if (score >= questions.length * 0.6) {
-        message = '✨ Dobry wynik! Wiesz sporo o miłości, ale zawsze można się więcej nauczyć! 💝';
-      } else if (score >= questions.length * 0.4) {
-        message = '💫 Nieźle! Masz podstawową wiedzę o miłości, ale warto ją poszerzyć! 💕';
-      } else {
-        message = '💝 Każdy wynik jest dobry! Miłość to nauka przez całe życie! 🌱';
-      }
-      
-      if (resultsMessageEl) resultsMessageEl.textContent = message;
-      
-      // Generate breakdown
-      if (resultsBreakdownEl) {
-        resultsBreakdownEl.innerHTML = '';
-        
-        const breakdownData = [
-          { label: 'Poprawne odpowiedzi', value: score },
-          { label: 'Błędne odpowiedzi', value: questions.length - score },
-          { label: 'Procent poprawnych', value: `${Math.round((score / questions.length) * 100)}%` },
-          { label: 'Poziom wiedzy', value: getKnowledgeLevel(score) }
-        ];
-        
-        breakdownData.forEach(item => {
-          const breakdownEl = document.createElement('div');
-          breakdownEl.className = 'breakdown-item';
-          
-          breakdownEl.innerHTML = `
-            <div class="breakdown-label">${item.label}</div>
-            <div class="breakdown-value">${item.value}</div>
-          `;
-          
-          resultsBreakdownEl.appendChild(breakdownEl);
-        });
-      }
-    }
-    
-    // Show restart button
-    if (restartQuizBtn) restartQuizBtn.style.display = 'inline-block';
-    
-    // Celebration effect
-    createParticleBurst(
-      Math.random() * window.innerWidth,
-      Math.random() * window.innerHeight,
-      '#ff4d6d'
-    );
-  }
-  
-  // Get knowledge level based on score
-  function getKnowledgeLevel(score) {
-    const percentage = (score / questions.length) * 100;
-    
-    if (percentage >= 90) return 'Ekspert 💎';
-    if (percentage >= 80) return 'Zaawansowany 🌟';
-    if (percentage >= 70) return 'Średniozaawansowany ✨';
-    if (percentage >= 60) return 'Początkujący 🌱';
-    if (percentage >= 40) return 'Nowicjusz 💫';
-    return 'Uczeń 💝';
-  }
-  
-  // Restart quiz
+
   function restartQuiz() {
-    if (quizContentEl) quizContentEl.style.display = 'block';
-    if (quizResultsEl) quizResultsEl.style.display = 'none';
-    if (restartQuizBtn) restartQuizBtn.style.display = 'none';
-    
     startQuiz();
   }
-  
-  // Event listeners
-  startQuizBtn?.addEventListener('click', startQuiz);
-  nextQuestionBtn?.addEventListener('click', nextQuestion);
-  restartQuizBtn?.addEventListener('click', restartQuiz);
-  
-  // Initialize
-  updateQuizStats();
+
+  function showResults() {
+    quizContent.style.display = 'none';
+    nextQuestionBtn.style.display = 'none';
+    quizResults.style.display = 'block';
+    restartQuizBtn.style.display = 'block';
+    finalScore.textContent = score;
+    if (score === questions.length) {
+      resultsMessage.textContent = "Gratulacje! Znasz mnie doskonale!";
+    } else {
+      resultsMessage.textContent = "Musimy jeszcze trochę popracować nad naszą znajomością!";
+    }
+  }
 })();
 
 /* ===== Love Map ===== */
 (function loveMap() {
-  const addLocationBtn = $('#addLocation');
-  const showAllLocationsBtn = $('#showAllLocations');
-  const clearMapBtn = $('#clearMap');
-  const exportMapBtn = $('#exportMap');
-  const canvas = $('#loveMapCanvas');
-  const mapInfo = $('#mapInfo');
-  const locationsList = $('#locationsList');
-  const totalLocationsEl = $('#totalLocations');
-  const favoriteLocationEl = $('#favoriteLocation');
-  const mapRatingEl = $('#mapRating');
-  
-  if (!canvas) return;
-  
-  const ctx = canvas.getContext('2d');
+  const loveMapCanvas = document.getElementById('loveMapCanvas');
+  if (!loveMapCanvas) return;
+
+  const ctx = loveMapCanvas.getContext('2d');
+  const addLocationBtn = document.getElementById('addLocation');
+  const showAllLocationsBtn = document.getElementById('showAllLocations');
+  const clearMapBtn = document.getElementById('clearMap');
+  const exportMapBtn = document.getElementById('exportMap');
+  const locationsList = document.getElementById('locationsList');
+
   let locations = [];
-  let selectedLocation = null;
-  let isDragging = false;
-  let dragStart = { x: 0, y: 0 };
-  
-  // Load locations from localStorage
-  try {
-    const savedLocations = localStorage.getItem('loveMapLocations');
-    if (savedLocations) {
-      locations = JSON.parse(savedLocations);
-    }
-  } catch (e) {
-    logger.warn('Could not load map locations:', e);
-  }
-  
-  // Save locations to localStorage
-  function saveLocations() {
-    try {
-      localStorage.setItem('loveMapLocations', JSON.stringify(locations));
-    } catch (e) {
-      logger.warn('Could not save map locations:', e);
-    }
-  }
-  
-  // Update map stats
-  function updateMapStats() {
-    if (totalLocationsEl) totalLocationsEl.textContent = locations.length;
-    
-    const favorite = locations.find(loc => loc.favorite);
-    if (favoriteLocationEl) {
-      favoriteLocationEl.textContent = favorite ? favorite.name : '-';
-    }
-    
-    if (mapRatingEl && locations.length > 0) {
-      const avgRating = locations.reduce((sum, loc) => sum + (loc.rating || 5), 0) / locations.length;
-      mapRatingEl.textContent = avgRating.toFixed(1);
-    }
-  }
-  
-  // Draw map background
-  function drawMapBackground() {
-    // Clear canvas
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    
-    // Draw gradient background
-    const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
-    gradient.addColorStop(0, '#1e3c72');
-    gradient.addColorStop(1, '#2a5298');
-    ctx.fillStyle = gradient;
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    
-    // Draw grid lines
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
-    ctx.lineWidth = 1;
-    
-    // Horizontal lines
-    for (let y = 0; y < canvas.height; y += 50) {
+
+  function draw() {
+    ctx.clearRect(0, 0, loveMapCanvas.width, loveMapCanvas.height);
+    // Draw a simple world map background
+    ctx.fillStyle = '#2a2a3a';
+    ctx.fillRect(0, 0, loveMapCanvas.width, loveMapCanvas.height);
+    ctx.strokeStyle = '#4a4a5a';
+    ctx.strokeRect(0, 0, loveMapCanvas.width, loveMapCanvas.height);
+
+    locations.forEach(loc => {
+      ctx.save();
+      ctx.translate(loc.x, loc.y);
+      ctx.fillStyle = '#ff4d6d';
       ctx.beginPath();
-      ctx.moveTo(0, y);
-      ctx.lineTo(canvas.width, y);
-      ctx.stroke();
-    }
-    
-    // Vertical lines
-    for (let x = 0; x < canvas.width; x += 50) {
-      ctx.beginPath();
-      ctx.moveTo(x, 0);
-      ctx.lineTo(x, canvas.height);
-      ctx.stroke();
-    }
-    
-    // Draw some decorative elements
-    drawStars();
-  }
-  
-  // Draw decorative stars
-  function drawStars() {
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
-    for (let i = 0; i < 20; i++) {
-      const x = Math.random() * canvas.width;
-      const y = Math.random() * canvas.height;
-      const size = Math.random() * 2 + 1;
-      
-      ctx.beginPath();
-      ctx.arc(x, y, size, 0, Math.PI * 2);
+      ctx.arc(0, 0, 5, 0, Math.PI * 2);
       ctx.fill();
-    }
-  }
-  
-  // Draw location pin
-  function drawLocationPin(location, isSelected = false) {
-    const x = location.x;
-    const y = location.y;
-    
-    ctx.save();
-    
-    // Draw pin shadow
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
-    ctx.beginPath();
-    ctx.arc(x + 2, y + 2, 15, 0, Math.PI * 2);
-    ctx.fill();
-    
-    // Draw pin
-    const pinGradient = ctx.createRadialGradient(x, y, 0, x, y, 15);
-    if (location.favorite) {
-      pinGradient.addColorStop(0, '#ffd166');
-      pinGradient.addColorStop(1, '#ffb347');
-    } else {
-      pinGradient.addColorStop(0, '#ff4d6d');
-      pinGradient.addColorStop(1, '#ff6b9d');
-    }
-    
-    ctx.fillStyle = pinGradient;
-    ctx.beginPath();
-    ctx.arc(x, y, 15, 0, Math.PI * 2);
-    ctx.fill();
-    
-    // Draw pin border
-    ctx.strokeStyle = isSelected ? '#ffffff' : 'rgba(255, 255, 255, 0.5)';
-    ctx.lineWidth = isSelected ? 3 : 2;
-    ctx.beginPath();
-    ctx.arc(x, y, 15, 0, Math.PI * 2);
-    ctx.stroke();
-    
-    // Draw pin icon
-    ctx.fillStyle = '#ffffff';
-    ctx.font = '16px Arial';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(location.icon || '📍', x, y);
-    
-    // Draw location name if selected
-    if (isSelected) {
-      ctx.fillStyle = '#ffffff';
-      ctx.font = '14px Arial';
-      ctx.textAlign = 'center';
-      ctx.fillText(location.name, x, y + 25);
-    }
-    
-    ctx.restore();
-  }
-  
-  // Draw all locations
-  function drawLocations() {
-    locations.forEach(location => {
-      const isSelected = selectedLocation && selectedLocation.id === location.id;
-      drawLocationPin(location, isSelected);
+      ctx.restore();
     });
   }
-  
-  // Redraw map
-  function redrawMap() {
-    drawMapBackground();
-    drawLocations();
-  }
-  
-  // Check if point is inside location pin
-  function isPointInLocation(x, y, location) {
-    const dx = x - location.x;
-    const dy = y - location.y;
-    return Math.sqrt(dx * dx + dy * dy) <= 15;
-  }
-  
-  // Get location at point
-  function getLocationAtPoint(x, y) {
-    return locations.find(location => isPointInLocation(x, y, location));
-  }
-  
-  // Show location details
-  function showLocationDetails(location) {
-    if (mapInfo) {
-      mapInfo.innerHTML = `
-        <h4>${location.name}</h4>
-        <p>${location.description}</p>
-        <p><small>${new Date(location.date).toLocaleDateString('pl-PL')}</small></p>
-        <p><small>Ocena: ${location.rating || 5}/5 ⭐</small></p>
-      `;
-    }
-  }
-  
-  // Clear location details
-  function clearLocationDetails() {
-    if (mapInfo) {
-      mapInfo.innerHTML = `
-        <h4>Kliknij na miejsce aby zobaczyć szczegóły</h4>
-        <p>Lub dodaj nowe miejsce miłości</p>
-      `;
-    }
-  }
-  
-  // Update locations list
-  function updateLocationsList() {
-    if (!locationsList) return;
-    
-    locationsList.innerHTML = '';
-    
-    if (locations.length === 0) {
-      const noLocations = document.createElement('div');
-      noLocations.textContent = 'Brak dodanych miejsc';
-      noLocations.style.textAlign = 'center';
-      noLocations.style.color = 'var(--muted)';
-      noLocations.style.padding = '1rem';
-      locationsList.appendChild(noLocations);
-      return;
-    }
-    
-    locations.forEach(location => {
-      const locationEl = createLocationElement(location);
-      locationsList.appendChild(locationEl);
-    });
-  }
-  
-  // Create location element
-  function createLocationElement(location) {
-    const locationEl = document.createElement('div');
-    locationEl.className = `location-item ${location.favorite ? 'favorite' : ''}`;
-    
-    const icon = document.createElement('div');
-    icon.className = 'location-icon';
-    icon.textContent = location.icon || '📍';
-    
-    const details = document.createElement('div');
-    details.className = 'location-details';
-    
-    const name = document.createElement('div');
-    name.className = 'location-name';
-    name.textContent = location.name;
-    
-    const description = document.createElement('div');
-    description.className = 'location-description';
-    description.textContent = location.description;
-    
-    const date = document.createElement('div');
-    date.className = 'location-date';
-    date.textContent = new Date(location.date).toLocaleDateString('pl-PL');
-    
-    details.appendChild(name);
-    details.appendChild(description);
-    details.appendChild(date);
-    
-    const actions = document.createElement('div');
-    actions.className = 'location-actions';
-    
-    const favoriteBtn = document.createElement('button');
-    favoriteBtn.className = `location-btn ${location.favorite ? 'favorite' : ''}`;
-    favoriteBtn.innerHTML = location.favorite ? '⭐' : '☆';
-    favoriteBtn.title = location.favorite ? 'Usuń z ulubionych' : 'Dodaj do ulubionych';
-    favoriteBtn.addEventListener('click', () => toggleFavorite(location));
-    
-    const editBtn = document.createElement('button');
-    editBtn.className = 'location-btn';
-    editBtn.innerHTML = '✏️';
-    editBtn.title = 'Edytuj';
-    editBtn.addEventListener('click', () => editLocation(location));
-    
-    const deleteBtn = document.createElement('button');
-    deleteBtn.className = 'location-btn';
-    deleteBtn.innerHTML = '🗑️';
-    deleteBtn.title = 'Usuń';
-    deleteBtn.addEventListener('click', () => deleteLocation(location));
-    
-    actions.appendChild(favoriteBtn);
-    actions.appendChild(editBtn);
-    actions.appendChild(deleteBtn);
-    
-    locationEl.appendChild(icon);
-    locationEl.appendChild(details);
-    locationEl.appendChild(actions);
-    
-    // Click to select on map
-    locationEl.addEventListener('click', () => {
-      selectedLocation = location;
-      redrawMap();
-      showLocationDetails(location);
-      
-      // Scroll map to location
-      canvas.scrollIntoView({ behavior: 'smooth' });
-    });
-    
-    return locationEl;
-  }
-  
-  // Toggle favorite status
-  function toggleFavorite(location) {
-    location.favorite = !location.favorite;
-    saveLocations();
+
+  addLocationBtn.addEventListener('click', () => {
+    const x = Math.random() * loveMapCanvas.width;
+    const y = Math.random() * loveMapCanvas.height;
+    locations.push({ x, y });
     updateLocationsList();
-    updateMapStats();
-    redrawMap();
-  }
-  
-  // Edit location
-  function editLocation(location) {
-    showLocationModal(location);
-  }
-  
-  // Delete location
-  function deleteLocation(location) {
-    if (confirm('Czy na pewno chcesz usunąć to miejsce?')) {
-      const index = locations.findIndex(loc => loc.id === location.id);
-      if (index > -1) {
-        locations.splice(index, 1);
-        saveLocations();
-        updateLocationsList();
-        updateMapStats();
-        redrawMap();
-        
-        if (selectedLocation && selectedLocation.id === location.id) {
-          selectedLocation = null;
-          clearLocationDetails();
-        }
-      }
-    }
-  }
-  
-  // Add new location
-  function addLocation() {
-    showLocationModal();
-  }
-  
-  // Show location modal
-  function showLocationModal(location = null) {
-    const modal = document.createElement('div');
-    modal.className = 'location-modal';
-    modal.innerHTML = `
-      <div class="location-modal-content">
-        <h3>${location ? 'Edytuj miejsce' : 'Dodaj nowe miejsce miłości'}</h3>
-        <form class="location-form" id="locationForm">
-          <div class="form-row">
-            <div class="form-group">
-              <label for="locationName">Nazwa miejsca</label>
-              <input type="text" id="locationName" required value="${location ? location.name : ''}">
-            </div>
-            <div class="form-group">
-              <label for="locationIcon">Ikona</label>
-              <select id="locationIcon">
-                <option value="📍" ${location && location.icon === '📍' ? 'selected' : ''}>📍 Pin</option>
-                <option value="💕" ${location && location.icon === '💕' ? 'selected' : ''}>💕 Serce</option>
-                <option value="🌹" ${location && location.icon === '🌹' ? 'selected' : ''}>🌹 Róża</option>
-                <option value="⭐" ${location && location.icon === '⭐' ? 'selected' : ''}>⭐ Gwiazda</option>
-                <option value="🎭" ${location && location.icon === '🎭' ? 'selected' : ''}>🎭 Teatr</option>
-                <option value="🍽️" ${location && location.icon === '🍽️' ? 'selected' : ''}>🍽️ Restauracja</option>
-                <option value="🏖️" ${location && location.icon === '🏖️' ? 'selected' : ''}>🏖️ Plaża</option>
-                <option value="🏔️" ${location && location.icon === '🏔️' ? 'selected' : ''}>🏔️ Góry</option>
-              </select>
-            </div>
-          </div>
-          <div class="form-row full-width">
-            <div class="form-group">
-              <label for="locationDescription">Opis</label>
-              <textarea id="locationDescription" rows="3" required>${location ? location.description : ''}</textarea>
-            </div>
-          </div>
-          <div class="form-row">
-            <div class="form-group">
-              <label for="locationDate">Data</label>
-              <input type="date" id="locationDate" required value="${location ? location.date : ''}">
-            </div>
-            <div class="form-group">
-              <label for="locationRating">Ocena (1-5)</label>
-              <input type="number" id="locationRating" min="1" max="5" value="${location ? location.rating || 5 : 5}">
-            </div>
-          </div>
-          <div class="form-actions">
-            <button type="button" class="btn ghost" onclick="this.closest('.location-modal').remove()">Anuluj</button>
-            <button type="submit" class="btn primary">${location ? 'Zapisz' : 'Dodaj'}</button>
-          </div>
-        </form>
-      </div>
-    `;
-    
-    document.body.appendChild(modal);
-    
-    // Show modal
-    setTimeout(() => modal.classList.add('active'), 10);
-    
-    // Handle form submission
-    const form = modal.querySelector('#locationForm');
-    form.addEventListener('submit', (e) => {
-      e.preventDefault();
-      
-      const formData = new FormData(form);
-      const locationData = {
-        id: location ? location.id : Date.now().toString(),
-        name: formData.get('locationName') || form.querySelector('#locationName').value,
-        icon: formData.get('locationIcon') || form.querySelector('#locationIcon').value,
-        description: formData.get('locationDescription') || form.querySelector('#locationDescription').value,
-        date: formData.get('locationDate') || form.querySelector('#locationDate').value,
-        rating: parseInt(formData.get('locationRating') || form.querySelector('#locationRating').value),
-        favorite: location ? location.favorite : false
-      };
-      
-      if (location) {
-        // Edit existing location
-        const index = locations.findIndex(loc => loc.id === location.id);
-        if (index > -1) {
-          locations[index] = locationData;
-        }
-      } else {
-        // Add new location - will be positioned on click
-        locationData.x = canvas.width / 2;
-        locationData.y = canvas.height / 2;
-        locations.push(locationData);
-      }
-      
-      saveLocations();
-      updateLocationsList();
-      updateMapStats();
-      redrawMap();
-      
-      // Close modal
-      modal.remove();
-      
-      // Confetti effect
-      createParticleBurst(
-        Math.random() * window.innerWidth,
-        Math.random() * window.innerHeight,
-        '#ff4d6d'
-      );
-    });
-  }
-  
-  // Show all locations
-  function showAllLocations() {
-    if (locations.length === 0) {
-      alert('Brak dodanych miejsc na mapie!');
-      return;
-    }
-    
-    // Highlight all locations briefly
-    locations.forEach((location, index) => {
-      setTimeout(() => {
-        selectedLocation = location;
-        redrawMap();
-        showLocationDetails(location);
-      }, index * 500);
-    });
-    
-    // Clear selection after showing all
-    setTimeout(() => {
-      selectedLocation = null;
-      redrawMap();
-      clearLocationDetails();
-    }, locations.length * 500 + 1000);
-  }
-  
-  // Clear map
-  function clearMap() {
-    if (confirm('Czy na pewno chcesz wyczyścić całą mapę? Ta operacja nie może być cofnięta.')) {
-      locations = [];
-      selectedLocation = null;
-      saveLocations();
-      updateLocationsList();
-      updateMapStats();
-      redrawMap();
-      clearLocationDetails();
-    }
-  }
-  
-  // Export map data
-  function exportMap() {
-    if (locations.length === 0) {
-      alert('Brak miejsc do eksportu!');
-      return;
-    }
-    
-    const dataStr = JSON.stringify(locations, null, 2);
-    const dataBlob = new Blob([dataStr], { type: 'application/json' });
-    const url = URL.createObjectURL(dataBlob);
-    
+    draw();
+  });
+
+  showAllLocationsBtn.addEventListener('click', () => {
+    // This is a placeholder, a real implementation would require a mapping library
+    draw();
+  });
+
+  clearMapBtn.addEventListener('click', () => {
+    locations = [];
+    updateLocationsList();
+    draw();
+  });
+
+  exportMapBtn.addEventListener('click', () => {
     const link = document.createElement('a');
-    link.href = url;
-    link.download = 'love-map-data.json';
+    link.download = 'love-map.png';
+    link.href = loveMapCanvas.toDataURL();
     link.click();
-    
-    URL.revokeObjectURL(url);
+  });
+
+  function updateLocationsList() {
+    locationsList.innerHTML = '';
+    locations.forEach((loc, index) => {
+      const div = document.createElement('div');
+      div.textContent = `Miejsce ${index + 1}`;
+      locationsList.appendChild(div);
+    });
   }
-  
-  // Canvas event listeners
-  canvas.addEventListener('click', (e) => {
-    const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-    
-    const clickedLocation = getLocationAtPoint(x, y);
-    
-    if (clickedLocation) {
-      selectedLocation = clickedLocation;
-      redrawMap();
-      showLocationDetails(clickedLocation);
-    } else {
-      // Add new location at click position
-      if (confirm('Czy chcesz dodać nowe miejsce w tym miejscu?')) {
-        const newLocation = {
-          id: Date.now().toString(),
-          name: 'Nowe miejsce',
-          icon: '📍',
-          description: 'Opis miejsca',
-          date: new Date().toISOString().split('T')[0],
-          rating: 5,
-          favorite: false,
-          x: x,
-          y: y
-        };
-        
-        locations.push(newLocation);
-        saveLocations();
-        updateLocationsList();
-        updateMapStats();
-        redrawMap();
-        
-        // Edit the new location
-        setTimeout(() => {
-          showLocationModal(newLocation);
-        }, 100);
-      }
-    }
-  });
-  
-  canvas.addEventListener('mousemove', (e) => {
-    const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-    
-    const hoveredLocation = getLocationAtPoint(x, y);
-    
-    if (hoveredLocation) {
-      canvas.style.cursor = 'pointer';
-    } else {
-      canvas.style.cursor = 'crosshair';
-    }
-  });
-  
-  // Event listeners
-  addLocationBtn?.addEventListener('click', addLocation);
-  showAllLocationsBtn?.addEventListener('click', showAllLocations);
-  clearMapBtn?.addEventListener('click', clearMap);
-  exportMapBtn?.addEventListener('click', exportMap);
-  
-  // Initialize map
-  redrawMap();
-  updateLocationsList();
-  updateMapStats();
+
+  draw();
 })();

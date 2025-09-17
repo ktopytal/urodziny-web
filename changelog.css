@@ -1,0 +1,82 @@
+/* changelog.css */
+
+.changelog-main {
+    padding: 80px 20px 20px;
+}
+
+.changelog-hero {
+    text-align: center;
+    padding: 40px 0;
+    background: var(--glass);
+    border-radius: 16px;
+    margin-bottom: 40px;
+}
+
+.changelog-hero h1 {
+    font-family: 'Great Vibes', cursive;
+    font-size: 3rem;
+    color: var(--primary);
+    margin: 0;
+}
+
+.changelog-hero p {
+    color: var(--muted);
+    font-size: 1.1rem;
+}
+
+.changelog-content {
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+.changelog-entry {
+    background: var(--bg-soft);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 20px;
+    margin-bottom: 20px;
+}
+
+.changelog-entry h2 {
+    color: var(--secondary);
+    border-bottom: 2px solid var(--border);
+    padding-bottom: 10px;
+    margin-top: 0;
+}
+
+.changelog-entry ul {
+    list-style: none;
+    padding: 0;
+}
+
+.changelog-entry li {
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.changelog-entry li:last-child {
+    border-bottom: none;
+}
+
+.badge {
+    padding: 4px 8px;
+    border-radius: 8px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--bg);
+}
+
+.badge.new {
+    background-color: var(--primary);
+}
+
+.badge.improvement {
+    background-color: var(--secondary);
+}
+
+.badge.fix {
+    background-color: #4caf50;
+}
