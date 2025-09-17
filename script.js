@@ -2302,3 +2302,56 @@ document.addEventListener('DOMContentLoaded', () => {
 
   draw();
 })();
+
+/* ===== Voice Message ===== */
+(function voiceMessage() {
+  const startRecordingBtn = document.getElementById('startRecording');
+  const stopRecordingBtn = document.getElementById('stopRecording');
+  const playRecordingBtn = document.getElementById('playRecording');
+  const waveform = document.getElementById('waveform');
+  const recordingTime = document.getElementById('recordingTime');
+
+  let mediaRecorder;
+  let audioChunks = [];
+  let audioBlob;
+  let timerInterval;
+
+  startRecordingBtn.addEventListener('click', async () => {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    mediaRecorder = new MediaRecorder(stream);
+    mediaRecorder.start();
+    startRecordingBtn.disabled = true;
+    stopRecordingBtn.disabled = false;
+
+    let seconds = 0;
+    recordingTime.textContent = '00:00';
+    timerInterval = setInterval(() => {
+      seconds++;
+      const minutes = Math.floor(seconds / 60).toString().padStart(2, '0');
+      const secs = (seconds % 60).toString().padStart(2, '0');
+      recordingTime.textContent = `${minutes}:${secs}`;
+    }, 1000);
+
+    mediaRecorder.addEventListener("dataavailable", event => {
+      audioChunks.push(event.data);
+    });
+  });
+
+  stopRecordingBtn.addEventListener('click', () => {
+    mediaRecorder.stop();
+    stopRecordingBtn.disabled = true;
+    playRecordingBtn.disabled = false;
+    clearInterval(timerInterval);
+
+    mediaRecorder.addEventListener("stop", () => {
+      audioBlob = new Blob(audioChunks);
+      audioChunks = [];
+    });
+  });
+
+  playRecordingBtn.addEventListener('click', () => {
+    const audioUrl = URL.createObjectURL(audioBlob);
+    const audio = new Audio(audioUrl);
+    audio.play();
+  });
+})();
