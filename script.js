@@ -1690,20 +1690,21 @@ document.addEventListener('DOMContentLoaded', () => {
           playBeep(isGolden ? 1200 : 800, 0.1, 'triangle');
 
           if (window.gsap) {
-            gsap.to(heart, {
+            const tl = gsap.timeline();
+            tl.to(heart, {
               scale: 1.5,
               opacity: 0,
               duration: 0.3,
               ease: 'power2.out',
               onComplete: () => heart.remove()
             });
-            gsap.to(gameScore, {
+            tl.to(gameScore, {
               scale: 1.3,
               duration: 0.3,
               ease: 'back.out(2)',
               yoyo: true,
               repeat: 1
-            });
+            }, "<0.1");
           } else {
             heart.remove();
           }
@@ -2089,12 +2090,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
   plantWishBtn.addEventListener('click', () => {
     if (wishes.length < 10) {
-      wishes.push({
+      const newWish = {
         x: Math.random() * gardenCanvas.width,
-        y: Math.random() * gardenCanvas.height,
+        y: gardenCanvas.height,
         state: 'seed',
         color: `hsl(${Math.random() * 360}, 70%, 60%)`
-      });
+      };
+      wishes.push(newWish);
+      if(window.gsap) {
+        gsap.from(newWish, { y: gardenCanvas.height + 20, duration: 1, ease: 'bounce.out' });
+      }
       updateStats();
       draw();
     }
@@ -2104,6 +2109,9 @@ document.addEventListener('DOMContentLoaded', () => {
     wishes.forEach(wish => {
       if (wish.state === 'seed') {
         wish.state = 'flower';
+        if(window.gsap) {
+          gsap.from(wish, { scale: 0, duration: 0.5, ease: 'back.out(1.7)' });
+        }
       }
     });
     updateStats();
@@ -2111,9 +2119,22 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   harvestWishesBtn.addEventListener('click', () => {
-    wishes = wishes.filter(wish => wish.state !== 'flower');
-    updateStats();
-    draw();
+    wishes.forEach(wish => {
+      if (wish.state === 'flower') {
+        if(window.gsap) {
+          gsap.to(wish, { y: -20, opacity: 0, duration: 1, ease: 'power2.in', onComplete: () => {
+            wishes = wishes.filter(w => w !== wish);
+            updateStats();
+            draw();
+          }});
+        }
+      }
+    });
+    if(!window.gsap) {
+      wishes = wishes.filter(wish => wish.state !== 'flower');
+      updateStats();
+      draw();
+    }
   });
 
   function updateStats() {
@@ -2191,11 +2212,15 @@ document.addEventListener('DOMContentLoaded', () => {
       button.addEventListener('click', () => checkAnswer(option, button));
       questionOptions.appendChild(button);
     });
+    if(window.gsap) {
+      gsap.from(questionOptions.children, { opacity: 0, y: 20, duration: 0.5, stagger: 0.1 });
+    }
   }
 
   function checkAnswer(selectedOption, button) {
     const question = questions[currentQuestionIndex];
-    if (selectedOption === question.answer) {
+    const isCorrect = selectedOption === question.answer;
+    if (isCorrect) {
       score++;
       quizScoreEl.textContent = score;
       button.style.background = '#4CAF50';
@@ -2203,6 +2228,9 @@ document.addEventListener('DOMContentLoaded', () => {
       button.style.background = '#F44336';
     }
     questionOptions.querySelectorAll('button').forEach(btn => btn.disabled = true);
+    if(window.gsap) {
+      gsap.to(button, { scale: 1.1, duration: 0.2, yoyo: true, repeat: 1 });
+    }
   }
 
   function nextQuestion() {
@@ -2228,6 +2256,9 @@ document.addEventListener('DOMContentLoaded', () => {
       resultsMessage.textContent = "Gratulacje! Znasz mnie doskonale!";
     } else {
       resultsMessage.textContent = "Musimy jeszcze trochę popracować nad naszą znajomością!";
+    }
+    if(window.gsap) {
+      gsap.from(quizResults, { scale: 0.5, opacity: 0, duration: 0.5, ease: 'back.out(1.7)' });
     }
   }
 })();
@@ -2317,41 +2348,50 @@ document.addEventListener('DOMContentLoaded', () => {
   let timerInterval;
 
   startRecordingBtn.addEventListener('click', async () => {
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    mediaRecorder = new MediaRecorder(stream);
-    mediaRecorder.start();
-    startRecordingBtn.disabled = true;
-    stopRecordingBtn.disabled = false;
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      mediaRecorder = new MediaRecorder(stream);
+      mediaRecorder.start();
+      startRecordingBtn.disabled = true;
+      stopRecordingBtn.disabled = false;
 
-    let seconds = 0;
-    recordingTime.textContent = '00:00';
-    timerInterval = setInterval(() => {
-      seconds++;
-      const minutes = Math.floor(seconds / 60).toString().padStart(2, '0');
-      const secs = (seconds % 60).toString().padStart(2, '0');
-      recordingTime.textContent = `${minutes}:${secs}`;
-    }, 1000);
+      let seconds = 0;
+      recordingTime.textContent = '00:00';
+      timerInterval = setInterval(() => {
+        seconds++;
+        const minutes = Math.floor(seconds / 60).toString().padStart(2, '0');
+        const secs = (seconds % 60).toString().padStart(2, '0');
+        recordingTime.textContent = `${minutes}:${secs}`;
+      }, 1000);
 
-    mediaRecorder.addEventListener("dataavailable", event => {
-      audioChunks.push(event.data);
-    });
+      mediaRecorder.addEventListener("dataavailable", event => {
+        audioChunks.push(event.data);
+      });
+    } catch (error) {
+      logger.error('Błąd podczas uzyskiwania dostępu do mikrofonu:', error);
+      alert('Nie można uzyskać dostępu do mikrofonu. Sprawdź uprawnienia w przeglądarce.');
+    }
   });
 
   stopRecordingBtn.addEventListener('click', () => {
-    mediaRecorder.stop();
-    stopRecordingBtn.disabled = true;
-    playRecordingBtn.disabled = false;
-    clearInterval(timerInterval);
+    if (mediaRecorder && mediaRecorder.state === 'recording') {
+      mediaRecorder.stop();
+      stopRecordingBtn.disabled = true;
+      playRecordingBtn.disabled = false;
+      clearInterval(timerInterval);
 
-    mediaRecorder.addEventListener("stop", () => {
-      audioBlob = new Blob(audioChunks);
-      audioChunks = [];
-    });
+      mediaRecorder.addEventListener("stop", () => {
+        audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+        audioChunks = [];
+      });
+    }
   });
 
   playRecordingBtn.addEventListener('click', () => {
-    const audioUrl = URL.createObjectURL(audioBlob);
-    const audio = new Audio(audioUrl);
-    audio.play();
+    if (audioBlob) {
+      const audioUrl = URL.createObjectURL(audioBlob);
+      const audio = new Audio(audioUrl);
+      audio.play();
+    }
   });
 })();
